@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F3F3F3;
+  --foreground: #171717;
+  --brand-black: #111111;
+  --brand-orange: #FC5100;
+  --brand-orange-dark: #D64500;
+  --brand-gray: #6B6B6B;
+  --brand-cream: #F3F3F3;
+  --brand-border: #E2E2E2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-black: var(--brand-black);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-dark: var(--brand-orange-dark);
+  --color-brand-gray: var(--brand-gray);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-border: var(--brand-border);
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+body {
+  /* exact match of the logo artwork's own background: white centre fading
+     to light grey at the edges */
+  background: radial-gradient(ellipse at 50% 30%, #ffffff 0%, #f3f3f3 62%, #efefef 100%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.font-serif-display {
+  font-family: var(--font-serif);
+}
+
+::selection {
+  background: var(--brand-orange);
+  color: white;
+}
+
+.btn-primary {
+  background: var(--brand-black);
+  color: white;
+  transition: background-color 0.2s ease;
+}
+.btn-primary:hover {
+  background: var(--brand-orange);
+}
+
+.tag-corner {
+  position: relative;
+}
+
+/* ---------- floating decorative background ---------- */
+.floating-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.floating-bg span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  will-change: transform;
+}
+
+.floating-bg .blob-orange {
+  width: 32vw;
+  height: 32vw;
+  min-width: 260px;
+  min-height: 260px;
+  top: -8%;
+  left: -6%;
+  background: var(--brand-orange);
+  opacity: 0.10;
+  animation: float-a 22s ease-in-out infinite alternate;
+}
+
+.floating-bg .blob-black {
+  width: 26vw;
+  height: 26vw;
+  min-width: 220px;
+  min-height: 220px;
+  top: 40%;
+  right: -8%;
+  background: var(--brand-black);
+  opacity: 0.05;
+  animation: float-b 28s ease-in-out infinite alternate;
+}
+
+.floating-bg .blob-orange-2 {
+  width: 20vw;
+  height: 20vw;
+  min-width: 180px;
+  min-height: 180px;
+  bottom: -6%;
+  left: 20%;
+  background: var(--brand-orange);
+  opacity: 0.08;
+  animation: float-c 26s ease-in-out infinite alternate;
+}
+
+@keyframes float-a {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(4vw, 6vh) scale(1.08); }
+  100% { transform: translate(-2vw, 3vh) scale(0.96); }
+}
+
+@keyframes float-b {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-5vw, -4vh) scale(1.1); }
+  100% { transform: translate(3vw, 2vh) scale(0.94); }
+}
+
+@keyframes float-c {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(3vw, -5vh) scale(1.05); }
+  100% { transform: translate(-4vw, 2vh) scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-bg span {
+    animation: none;
+  }
+}
