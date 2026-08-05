@@ -15,7 +15,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from . import models, schemas, auth, square_client
+from . import models, schemas, auth, square_client, email_client
 from .db import Base, engine, get_db
 
 Base.metadata.create_all(bind=engine)
@@ -436,6 +436,10 @@ def pay_order(order_id: int, data: schemas.PayOrderIn, db: Session = Depends(get
                 item.product.status = "sold"
         db.commit()
         db.refresh(order)
+        try:
+            email_client.send_order_confirmation(order)
+        except Exception:
+            pass  # email is best-effort -- never block a confirmed payment
         return order
 
     raise HTTPException(status_code=402, detail=f"El pago no se pudo completar (estado: {payment_status})")
@@ -471,6 +475,7 @@ async def square_webhook(request: Request, db: Session = Depends(get_db)):
         if reference_id:
             order = db.query(models.Order).filter(models.Order.id == int(reference_id)).first()
             if order:
+                just_paid = False
                 if square_status in ("COMPLETED", "APPROVED") and order.status == "pending_payment":
                     order.status = "paid"
                     order.payment_provider = "square"
@@ -478,11 +483,17 @@ async def square_webhook(request: Request, db: Session = Depends(get_db)):
                     for item in order.items:
                         if item.product and item.product.status != "sold":
                             item.product.status = "sold"
+                    just_paid = True
                 elif square_status == "FAILED" and order.status == "pending_payment":
                     order.payment_provider = "square"
                 elif square_status == "CANCELED" and order.status == "pending_payment":
                     order.payment_provider = "square"
                 db.commit()
+                if just_paid:
+                    try:
+                        email_client.send_order_confirmation(order)
+                    except Exception:
+                        pass  # email is best-effort -- never block webhook processing
 
     return {"ok": True}
 
