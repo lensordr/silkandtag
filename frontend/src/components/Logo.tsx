@@ -57,7 +57,7 @@ export default function Logo({
           className={`text-brand-gray uppercase tracking-[0.25em] mt-1 ${layout === "stacked" ? "text-center" : ""}`}
           style={{ fontSize: iconSize * 0.14 }}
         >
-          Resale &middot; Spain
+          Moda Circular
         </div>
       )}
     </div>

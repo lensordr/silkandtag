@@ -16,10 +16,41 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://www.silkandtag.com";
+
 export const metadata: Metadata = {
-  title: "Silk & Tag · Resale Spain",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Silk & Tag · Moda circular seleccionada en España",
+    template: "%s · Silk & Tag",
+  },
   description:
-    "Moda de segunda mano seleccionada a mano en Espana. Compra y vende ropa con estilo, con envio a toda la peninsula.",
+    "Silk & Tag es una tienda online de moda circular en España: prendas de calidad revisadas y fotografiadas a mano, piezas unicas con envio a toda la peninsula.",
+  keywords: [
+    "moda circular",
+    "ropa vintage España",
+    "moda sostenible",
+    "prendas seleccionadas",
+    "tienda online ropa Barcelona",
+    "Silk & Tag",
+  ],
+  authors: [{ name: "Silk & Tag" }],
+  robots: { index: true, follow: true },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    siteName: "Silk & Tag",
+    url: SITE_URL,
+    title: "Silk & Tag · Moda circular seleccionada en España",
+    description:
+      "Prendas de calidad revisadas a mano, piezas unicas con envio a toda la peninsula.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Silk & Tag · Moda circular seleccionada en España",
+    description: "Prendas de calidad revisadas a mano, piezas unicas con envio a toda la peninsula.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

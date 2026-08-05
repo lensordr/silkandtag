@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .db import Base
@@ -49,6 +49,8 @@ class Order(Base):
 
     subtotal = Column(Float, default=0.0)
     shipping_cost = Column(Float, default=0.0)
+    discount_amount = Column(Float, default=0.0)
+    promo_code = Column(String, default="")
     total = Column(Float, default=0.0)
 
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -60,6 +62,25 @@ class Order(Base):
     access_token = Column(String, default="", index=True)
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+
+class PromoCode(Base):
+    """Discount codes handed out manually by the admin, mainly for the
+    Instagram-tag reward: customer tags @silkandtag on a story/post after
+    receiving their order, admin creates a one-time 10% code for them here.
+    Not self-service -- there is no automatic Instagram verification, the
+    admin decides when a tag qualifies."""
+    __tablename__ = "promo_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    instagram_username = Column(String, default="")  # who it was issued to, for admin reference
+    discount_percent = Column(Float, default=10.0)
+    max_uses = Column(Integer, default=1)
+    used_count = Column(Integer, default=0)
+    active = Column(Boolean, default=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class OrderItem(Base):

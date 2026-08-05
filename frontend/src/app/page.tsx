@@ -28,15 +28,15 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 grid gap-10 sm:grid-cols-2 items-center">
           <div>
             <p className="uppercase tracking-[0.2em] text-brand-orange text-sm font-semibold mb-4">
-              Segunda mano, primera calidad
+              Moda circular, primera calidad
             </p>
             <h1 className="font-serif-display text-4xl sm:text-5xl leading-tight">
               Moda con historia,<br /> estilo sin excusas.
             </h1>
             <p className="mt-5 text-brand-gray text-lg leading-relaxed max-w-md">
-              En Silk &amp; Tag seleccionamos ropa de segunda mano en buen
-              estado para que vistas mejor gastando menos, y das a cada
-              prenda una segunda vida en Espana.
+              En Silk &amp; Tag seleccionamos prendas de calidad en excelente
+              estado para que vistas mejor gastando menos, dando a cada
+              pieza una nueva vida en Espana.
             </p>
             <div className="mt-8 flex gap-4">
               <Link href="/tienda" className="btn-primary px-6 py-3 text-sm font-semibold uppercase tracking-wide">

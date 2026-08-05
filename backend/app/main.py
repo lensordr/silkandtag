@@ -34,6 +34,8 @@ def _ensure_column(table: str, column: str, ddl_type: str):
 
 
 _ensure_column("orders", "access_token", "VARCHAR DEFAULT ''")
+_ensure_column("orders", "promo_code", "VARCHAR DEFAULT ''")
+_ensure_column("orders", "discount_amount", "FLOAT DEFAULT 0.0")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
@@ -346,6 +348,38 @@ def require_order_access(order: models.Order, token: str):
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
 
+def _find_valid_promo(db: Session, raw_code: str):
+    """Looks up a promo code and returns (promo, error_message). error_message
+    is empty when the code is usable. Centralised so the checkout-time
+    validate endpoint and the actual order-creation discount use identical
+    rules."""
+    code = (raw_code or "").strip().upper()
+    if not code:
+        return None, ""
+    promo = db.query(models.PromoCode).filter(models.PromoCode.code == code).first()
+    if not promo:
+        return None, "Codigo no valido"
+    if not promo.active:
+        return None, "Este codigo ya no esta activo"
+    if promo.used_count >= promo.max_uses:
+        return None, "Este codigo ya ha sido utilizado"
+    if promo.expires_at and datetime.utcnow() > promo.expires_at:
+        return None, "Este codigo ha caducado"
+    return promo, ""
+
+
+@app.post("/api/promocodes/validate", response_model=schemas.PromoValidateOut)
+def validate_promocode(data: schemas.PromoValidateIn, db: Session = Depends(get_db)):
+    """Public, no auth -- lets the checkout page preview the discount before
+    the customer submits the order."""
+    promo, error = _find_valid_promo(db, data.code)
+    if error:
+        return schemas.PromoValidateOut(valid=False, message=error)
+    if not promo:
+        return schemas.PromoValidateOut(valid=False, message="Codigo no valido")
+    return schemas.PromoValidateOut(valid=True, discount_percent=promo.discount_percent)
+
+
 @app.post("/api/orders", response_model=schemas.OrderOut)
 def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
     expire_stale_reservations(db)
@@ -364,6 +398,17 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
         products.append(product)
         subtotal += product.price
 
+    promo = None
+    discount_amount = 0.0
+    promo_code_stored = ""
+    if data.promo_code:
+        promo, error = _find_valid_promo(db, data.promo_code)
+        if error:
+            raise HTTPException(status_code=400, detail=error)
+        if promo:
+            discount_amount = round(subtotal * promo.discount_percent / 100, 2)
+            promo_code_stored = promo.code
+
     shipping_cost = SHIPPING_FLAT_RATE
     order = models.Order(
         customer_name=data.customer_name,
@@ -377,10 +422,14 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
         status="pending_payment",
         subtotal=subtotal,
         shipping_cost=shipping_cost,
-        total=subtotal + shipping_cost,
+        discount_amount=discount_amount,
+        promo_code=promo_code_stored,
+        total=round(subtotal - discount_amount + shipping_cost, 2),
         access_token=secrets.token_urlsafe(24),
     )
     db.add(order)
+    if promo:
+        promo.used_count += 1
     db.flush()
 
     for product in products:
@@ -556,6 +605,10 @@ def admin_update_order(
             for item in order.items:
                 if item.product:
                     item.product.status = "available"
+            if order.promo_code:
+                promo = db.query(models.PromoCode).filter(models.PromoCode.code == order.promo_code).first()
+                if promo and promo.used_count > 0:
+                    promo.used_count -= 1
         if data.status in ("paid", "shipped", "delivered"):
             for item in order.items:
                 if item.product and item.product.status != "sold":
@@ -578,5 +631,76 @@ def admin_delete_order(order_id: int, db: Session = Depends(get_db), _=Depends(r
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
     db.delete(order)
+    db.commit()
+    return {"ok": True}
+
+
+# ---------- Admin promo codes ----------
+def _generate_promo_code(db: Session, instagram_username: str) -> str:
+    """Auto-generates a readable code from the Instagram handle (e.g.
+    @maria.style -> MARIASTYLE10), falling back to a random suffix on
+    collision so the admin never has to think of a code by hand."""
+    base = "".join(ch for ch in instagram_username.upper() if ch.isalnum())[:12]
+    base = base or "TAG"
+    candidate = f"{base}10"
+    while db.query(models.PromoCode).filter(models.PromoCode.code == candidate).first():
+        candidate = f"{base}{secrets.token_hex(2).upper()}"
+    return candidate
+
+
+@app.get("/api/admin/promocodes", response_model=List[schemas.PromoCodeOut])
+def admin_list_promocodes(db: Session = Depends(get_db), _=Depends(require_admin)):
+    return db.query(models.PromoCode).order_by(models.PromoCode.created_at.desc()).all()
+
+
+@app.post("/api/admin/promocodes", response_model=schemas.PromoCodeOut)
+def admin_create_promocode(
+    data: schemas.PromoCodeCreate, db: Session = Depends(get_db), _=Depends(require_admin)
+):
+    code = (data.code or "").strip().upper() or _generate_promo_code(db, data.instagram_username)
+    if db.query(models.PromoCode).filter(models.PromoCode.code == code).first():
+        raise HTTPException(status_code=400, detail=f"El codigo '{code}' ya existe")
+    promo = models.PromoCode(
+        code=code,
+        instagram_username=data.instagram_username.strip().lstrip("@"),
+        discount_percent=data.discount_percent,
+        max_uses=data.max_uses,
+        expires_at=data.expires_at,
+    )
+    db.add(promo)
+    db.commit()
+    db.refresh(promo)
+    return promo
+
+
+@app.put("/api/admin/promocodes/{promo_id}", response_model=schemas.PromoCodeOut)
+def admin_update_promocode(
+    promo_id: int,
+    data: schemas.PromoCodeUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    promo = db.query(models.PromoCode).filter(models.PromoCode.id == promo_id).first()
+    if not promo:
+        raise HTTPException(status_code=404, detail="Codigo no encontrado")
+    if data.active is not None:
+        promo.active = data.active
+    if data.discount_percent is not None:
+        promo.discount_percent = data.discount_percent
+    if data.max_uses is not None:
+        promo.max_uses = data.max_uses
+    if data.expires_at is not None:
+        promo.expires_at = data.expires_at
+    db.commit()
+    db.refresh(promo)
+    return promo
+
+
+@app.delete("/api/admin/promocodes/{promo_id}")
+def admin_delete_promocode(promo_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+    promo = db.query(models.PromoCode).filter(models.PromoCode.id == promo_id).first()
+    if not promo:
+        raise HTTPException(status_code=404, detail="Codigo no encontrado")
+    db.delete(promo)
     db.commit()
     return {"ok": True}

@@ -10,8 +10,8 @@ export default function Footer() {
             <Logo iconSize={40} />
           </div>
           <p className="text-sm text-white/60 leading-relaxed">
-            Moda de segunda mano seleccionada a mano. Cada prenda tiene una
-            historia; nosotros le damos una segunda vida en Espana.
+            Moda circular seleccionada a mano. Cada prenda tiene una
+            historia; nosotros le damos una nueva vida en Espana.
           </p>
         </div>
         <div>

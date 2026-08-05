@@ -1,4 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Nuestra historia",
+  description:
+    "Silk & Tag nace en Barcelona con una idea sencilla: la mejor prenda es la que ya existe. Descubre como seleccionamos y revisamos cada pieza de nuestra moda circular.",
+  alternates: { canonical: "/nosotros" },
+};
 
 export default function AboutPage() {
   return (

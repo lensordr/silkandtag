@@ -21,6 +21,8 @@ type OrderOut = {
   id: number;
   total: number;
   access_token: string;
+  discount_amount: number;
+  promo_code: string;
 };
 
 declare global {
@@ -60,6 +62,9 @@ export default function CheckoutPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [promoInput, setPromoInput] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoResult, setPromoResult] = useState<{ applied: boolean; discountPercent: number; message: string } | null>(null);
   const [squareLoaded, setSquareLoaded] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -70,6 +75,27 @@ export default function CheckoutPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  async function applyPromoCode() {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoChecking(true);
+    setPromoResult(null);
+    try {
+      const res = await api.validatePromoCode(code);
+      if (res.valid) {
+        setPromoResult({ applied: true, discountPercent: res.discount_percent, message: `Codigo aplicado: -${res.discount_percent}%` });
+      } else {
+        setPromoResult({ applied: false, discountPercent: 0, message: res.message || "Codigo no valido" });
+      }
+    } catch {
+      setPromoResult({ applied: false, discountPercent: 0, message: "No se pudo comprobar el codigo" });
+    } finally {
+      setPromoChecking(false);
+    }
+  }
+
+  const discountAmount = promoResult?.applied ? Math.round(total * promoResult.discountPercent) / 100 : 0;
+
   async function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -78,6 +104,7 @@ export default function CheckoutPage() {
       const createdOrder = await api.createOrder({
         ...form,
         items: items.map((p) => ({ product_id: p.id })),
+        promo_code: promoResult?.applied ? promoInput.trim() : "",
       });
       clear();
       setOrder(createdOrder);
@@ -183,6 +210,32 @@ export default function CheckoutPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="text-sm text-brand-gray block mb-1">Codigo de descuento (opcional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoInput}
+                      onChange={(e) => { setPromoInput(e.target.value); setPromoResult(null); }}
+                      placeholder="Ej. MARIA10"
+                      className="flex-1 border border-brand-border px-3 py-2 focus:outline-none focus:border-brand-orange uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyPromoCode}
+                      disabled={!promoInput.trim() || promoChecking}
+                      className="px-4 py-2 text-sm font-semibold uppercase border border-brand-black hover:bg-brand-black hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      {promoChecking ? "..." : "Aplicar"}
+                    </button>
+                  </div>
+                  {promoResult && (
+                    <p className={promoResult.applied ? "mt-1 text-sm text-green-600" : "mt-1 text-sm text-red-600"}>
+                      {promoResult.message}
+                    </p>
+                  )}
+                </div>
+
                 <div className="border border-brand-border bg-white p-4 text-sm text-brand-gray">
                   El siguiente paso te pedira los datos de tu tarjeta para
                   completar el pago de forma segura. Dudas antes de comprar:
@@ -246,14 +299,26 @@ export default function CheckoutPage() {
                 <div className="border-t border-brand-border pt-3 flex justify-between text-sm text-brand-gray">
                   <span>Envio</span><span>{SHIPPING_FLAT_RATE.toFixed(2)} €</span>
                 </div>
+                {promoResult?.applied && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Descuento ({promoResult.discountPercent}%)</span><span>-{discountAmount.toFixed(2)} €</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span><span>{(total + SHIPPING_FLAT_RATE).toFixed(2)} €</span>
+                  <span>Total</span><span>{(total - discountAmount + SHIPPING_FLAT_RATE).toFixed(2)} €</span>
                 </div>
               </>
             ) : (
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Total a pagar</span><span>{order ? order.total.toFixed(2) : "0.00"} €</span>
-              </div>
+              <>
+                {order && order.discount_amount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Descuento ({order.promo_code})</span><span>-{order.discount_amount.toFixed(2)} €</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total a pagar</span><span>{order ? order.total.toFixed(2) : "0.00"} €</span>
+                </div>
+              </>
             )}
           </div>
         </div>

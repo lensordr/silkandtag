@@ -50,6 +50,14 @@ export const api = {
     const res = await fetch(`${API_BASE}/api/products/${id}`, { cache: "no-store" });
     return handle(res);
   },
+  async validatePromoCode(code: string) {
+    const res = await fetch(`${API_BASE}/api/promocodes/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return handle(res);
+  },
   async createOrder(payload: unknown) {
     const res = await fetch(`${API_BASE}/api/orders`, {
       method: "POST",
@@ -132,6 +140,42 @@ export const api = {
   async adminAnalytics() {
     const res = await fetch(`${API_BASE}/api/admin/analytics`, {
       cache: "no-store",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
+  async adminListPromoCodes() {
+    const res = await fetch(`${API_BASE}/api/admin/promocodes`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
+  async adminCreatePromoCode(payload: unknown) {
+    const res = await fetch(`${API_BASE}/api/admin/promocodes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAdminToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    return handle(res);
+  },
+  async adminUpdatePromoCode(id: number, payload: unknown) {
+    const res = await fetch(`${API_BASE}/api/admin/promocodes/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAdminToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    return handle(res);
+  },
+  async adminDeletePromoCode(id: number) {
+    const res = await fetch(`${API_BASE}/api/admin/promocodes/${id}`, {
+      method: "DELETE",
       headers: { Authorization: `Bearer ${getAdminToken()}` },
     });
     return handle(res);

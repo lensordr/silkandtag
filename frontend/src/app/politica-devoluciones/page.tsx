@@ -1,4 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Politica de devoluciones y envios",
+  description:
+    "Consulta las condiciones de envio y el plazo de 14 dias para devoluciones en Silk & Tag, tienda online de moda circular en España.",
+  alternates: { canonical: "/politica-devoluciones" },
+};
 
 export default function ReturnsPolicyPage() {
   return (

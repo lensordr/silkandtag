@@ -57,6 +57,7 @@ class OrderCreate(BaseModel):
     province: str = ""
     notes: str = ""
     items: List[OrderItemIn]
+    promo_code: str = ""
 
 
 class OrderItemOut(BaseModel):
@@ -87,6 +88,8 @@ class OrderOut(BaseModel):
     tracking_number: str
     subtotal: float
     shipping_cost: float
+    discount_amount: float = 0.0
+    promo_code: str = ""
     total: float
     created_at: datetime
     items: List[OrderItemOut] = []
@@ -106,6 +109,46 @@ class OrderStatusUpdate(BaseModel):
     tracking_number: Optional[str] = None
     shipping_provider: Optional[str] = None
     payment_reference: Optional[str] = None
+
+
+class PromoCodeCreate(BaseModel):
+    code: Optional[str] = None  # if blank, auto-generated from instagram_username
+    instagram_username: str = ""
+    discount_percent: float = 10.0
+    max_uses: int = 1
+    expires_at: Optional[datetime] = None
+
+
+class PromoCodeUpdate(BaseModel):
+    active: Optional[bool] = None
+    discount_percent: Optional[float] = None
+    max_uses: Optional[int] = None
+    expires_at: Optional[datetime] = None
+
+
+class PromoCodeOut(BaseModel):
+    id: int
+    code: str
+    instagram_username: str
+    discount_percent: float
+    max_uses: int
+    used_count: int
+    active: bool
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PromoValidateIn(BaseModel):
+    code: str
+
+
+class PromoValidateOut(BaseModel):
+    valid: bool
+    discount_percent: float = 0.0
+    message: str = ""
 
 
 class LoginIn(BaseModel):

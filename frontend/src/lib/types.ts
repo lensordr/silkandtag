@@ -40,10 +40,24 @@ export interface Order {
   tracking_number: string;
   subtotal: number;
   shipping_cost: number;
+  discount_amount: number;
+  promo_code: string;
   total: number;
   created_at: string;
   items: OrderItem[];
   access_token: string;
+}
+
+export interface PromoCode {
+  id: number;
+  code: string;
+  instagram_username: string;
+  discount_percent: number;
+  max_uses: number;
+  used_count: number;
+  active: boolean;
+  expires_at: string | null;
+  created_at: string;
 }
 
 export function productImages(p: Product): string[] {
