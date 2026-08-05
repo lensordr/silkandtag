@@ -36,7 +36,7 @@ export default function AboutPage() {
         {[
           ["Seleccion cuidada", "Revisamos cada prenda a mano antes de publicarla."],
           ["Envio a toda Espana", "Recibe tu pedido en pocos dias, sea donde sea."],
-          ["Pago seguro", "Muy pronto, pagos con Square directamente en la web."],
+          ["Pago seguro", "Pagos con tarjeta directamente en la web, procesados de forma segura con Square."],
         ].map(([title, text]) => (
           <div key={title} className="border border-brand-border bg-white p-5">
             <h3 className="font-serif-display text-lg mb-2">{title}</h3>

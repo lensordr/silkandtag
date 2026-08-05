@@ -37,7 +37,7 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-semibold uppercase tracking-wider text-white/80 mb-3">Envios y pagos</h4>
           <p className="text-sm text-white/60 leading-relaxed">
-            Envios a toda España. Pago seguro proximamente con Square.
+            Envios a toda España. Pago seguro con tarjeta a traves de Square.
             Devoluciones en 14 dias.{" "}
             <Link href="/politica-devoluciones" className="text-brand-orange hover:underline">
               Ver politica →

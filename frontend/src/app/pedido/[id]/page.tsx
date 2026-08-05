@@ -67,8 +67,8 @@ export default function OrderConfirmationPage() {
       </div>
 
       <div className="border border-brand-border bg-[#FFF7F0] p-4 mt-6 text-sm text-brand-gray">
-        Te contactaremos en <strong>{order.email}</strong> para confirmar el pago
-        (proximamente disponible con Square) y coordinar el envio a {order.city}.
+        Te contactaremos en <strong>{order.email}</strong> para coordinar el
+        envio a {order.city}.
       </div>
 
       <div className="mt-8 text-center">
