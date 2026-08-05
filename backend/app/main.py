@@ -335,7 +335,9 @@ def delete_product(product_id: int, db: Session = Depends(get_db), _=Depends(req
 
 
 # ---------- Orders ----------
-SHIPPING_FLAT_RATE = 4.95
+SHIPPING_RATES = {"correos": 4.95, "seur": 6.95}
+DEFAULT_SHIPPING_METHOD = "correos"
+FREE_SHIPPING_THRESHOLD = 80.0
 
 
 def require_order_access(order: models.Order, token: str):
@@ -409,7 +411,8 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
             discount_amount = round(subtotal * promo.discount_percent / 100, 2)
             promo_code_stored = promo.code
 
-    shipping_cost = SHIPPING_FLAT_RATE
+    shipping_method = data.shipping_method if data.shipping_method in SHIPPING_RATES else DEFAULT_SHIPPING_METHOD
+    shipping_cost = 0.0 if subtotal >= FREE_SHIPPING_THRESHOLD else SHIPPING_RATES[shipping_method]
     order = models.Order(
         customer_name=data.customer_name,
         email=data.email,
@@ -422,6 +425,7 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
         status="pending_payment",
         subtotal=subtotal,
         shipping_cost=shipping_cost,
+        shipping_provider=shipping_method,
         discount_amount=discount_amount,
         promo_code=promo_code_stored,
         total=round(subtotal - discount_amount + shipping_cost, 2),

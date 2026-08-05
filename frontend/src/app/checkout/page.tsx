@@ -7,7 +7,9 @@ import Script from "next/script";
 import { useCart } from "@/lib/cart";
 import { api } from "@/lib/api";
 
-const SHIPPING_FLAT_RATE = 4.95;
+const SHIPPING_RATES: Record<string, number> = { correos: 4.95, seur: 6.95 };
+const SHIPPING_LABELS: Record<string, string> = { correos: "Correos", seur: "SEUR" };
+const FREE_SHIPPING_THRESHOLD = 80;
 
 const SQUARE_APP_ID = process.env.NEXT_PUBLIC_SQUARE_APP_ID || "";
 const SQUARE_LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || "";
@@ -65,6 +67,7 @@ export default function CheckoutPage() {
   const [promoInput, setPromoInput] = useState("");
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoResult, setPromoResult] = useState<{ applied: boolean; discountPercent: number; message: string } | null>(null);
+  const [shippingMethod, setShippingMethod] = useState<"correos" | "seur">("correos");
   const [squareLoaded, setSquareLoaded] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -95,6 +98,8 @@ export default function CheckoutPage() {
   }
 
   const discountAmount = promoResult?.applied ? Math.round(total * promoResult.discountPercent) / 100 : 0;
+  const freeShipping = total >= FREE_SHIPPING_THRESHOLD;
+  const shippingCost = freeShipping ? 0 : SHIPPING_RATES[shippingMethod];
 
   async function handleShippingSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +110,7 @@ export default function CheckoutPage() {
         ...form,
         items: items.map((p) => ({ product_id: p.id })),
         promo_code: promoResult?.applied ? promoInput.trim() : "",
+        shipping_method: shippingMethod,
       });
       clear();
       setOrder(createdOrder);
@@ -211,6 +217,36 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
+                  <label className="text-sm text-brand-gray block mb-2">Metodo de envio</label>
+                  <div className="space-y-2">
+                    {(Object.keys(SHIPPING_RATES) as Array<"correos" | "seur">).map((method) => (
+                      <label
+                        key={method}
+                        className={"flex items-center justify-between border px-3 py-2 cursor-pointer " + (shippingMethod === method ? "border-brand-orange" : "border-brand-border")}
+                      >
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="shipping_method"
+                            checked={shippingMethod === method}
+                            onChange={() => setShippingMethod(method)}
+                          />
+                          {SHIPPING_LABELS[method]}
+                        </span>
+                        <span className={freeShipping ? "text-green-600 font-semibold" : ""}>
+                          {freeShipping ? "Gratis" : SHIPPING_RATES[method].toFixed(2) + " €"}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {!freeShipping && (
+                    <p className="mt-1 text-xs text-brand-gray">
+                      Envio gratis en pedidos a partir de {FREE_SHIPPING_THRESHOLD.toFixed(0)} €.
+                    </p>
+                  )}
+                </div>
+
+                <div>
                   <label className="text-sm text-brand-gray block mb-1">Codigo de descuento (opcional)</label>
                   <div className="flex gap-2">
                     <input
@@ -297,7 +333,7 @@ export default function CheckoutPage() {
                   </div>
                 ))}
                 <div className="border-t border-brand-border pt-3 flex justify-between text-sm text-brand-gray">
-                  <span>Envio</span><span>{SHIPPING_FLAT_RATE.toFixed(2)} €</span>
+                  <span>Envio ({SHIPPING_LABELS[shippingMethod]})</span><span>{freeShipping ? "Gratis" : shippingCost.toFixed(2) + " €"}</span>
                 </div>
                 {promoResult?.applied && (
                   <div className="flex justify-between text-sm text-green-600">
@@ -305,7 +341,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span><span>{(total - discountAmount + SHIPPING_FLAT_RATE).toFixed(2)} €</span>
+                  <span>Total</span><span>{(total - discountAmount + shippingCost).toFixed(2)} €</span>
                 </div>
               </>
             ) : (

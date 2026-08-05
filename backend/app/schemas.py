@@ -58,6 +58,7 @@ class OrderCreate(BaseModel):
     notes: str = ""
     items: List[OrderItemIn]
     promo_code: str = ""
+    shipping_method: str = "correos"
 
 
 class OrderItemOut(BaseModel):

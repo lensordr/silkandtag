@@ -126,7 +126,7 @@ export default function AdminOrdersPage() {
                       ))}
                     </ul>
                     <div className="border-t border-brand-border mt-2 pt-2 flex justify-between text-brand-gray">
-                      <span>Envio</span><span>{o.shipping_cost.toFixed(2)} €</span>
+                      <span>Envio ({o.shipping_provider === "seur" ? "SEUR" : "Correos"})</span><span>{o.shipping_cost.toFixed(2)} €</span>
                     </div>
                     <div className="flex justify-between font-semibold">
                       <span>Total</span><span>{o.total.toFixed(2)} €</span>

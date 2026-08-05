@@ -96,8 +96,8 @@ export default async function HomePage() {
             <p className="text-white/70 mt-2 text-sm">Prendas revisadas a mano</p>
           </div>
           <div>
-            <p className="font-serif-display text-3xl text-brand-orange">España</p>
-            <p className="text-white/70 mt-2 text-sm">Envios a toda la peninsula</p>
+            <p className="font-serif-display text-3xl text-brand-orange">80€</p>
+            <p className="text-white/70 mt-2 text-sm">Envio gratis a partir de este importe</p>
           </div>
           <div>
             <p className="font-serif-display text-3xl text-brand-orange">♻</p>

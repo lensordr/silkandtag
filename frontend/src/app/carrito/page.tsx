@@ -5,10 +5,13 @@ import { useCart } from "@/lib/cart";
 import { mediaUrl } from "@/lib/api";
 import { productImages } from "@/lib/types";
 
-const SHIPPING_FLAT_RATE = 4.95;
+const CHEAPEST_SHIPPING_RATE = 4.95;
+const FREE_SHIPPING_THRESHOLD = 80;
 
 export default function CartPage() {
   const { items, removeItem, total } = useCart();
+  const freeShipping = total >= FREE_SHIPPING_THRESHOLD;
+  const estimatedShipping = freeShipping ? 0 : CHEAPEST_SHIPPING_RATE;
 
   if (items.length === 0) {
     return (
@@ -51,9 +54,12 @@ export default function CartPage() {
 
       <div className="mt-8 max-w-sm ml-auto space-y-2 text-sm">
         <div className="flex justify-between"><span className="text-brand-gray">Subtotal</span><span>{total.toFixed(2)} €</span></div>
-        <div className="flex justify-between"><span className="text-brand-gray">Envio</span><span>{SHIPPING_FLAT_RATE.toFixed(2)} €</span></div>
+        <div className="flex justify-between"><span className="text-brand-gray">Envio (desde)</span><span className={freeShipping ? "text-green-600 font-semibold" : ""}>{freeShipping ? "Gratis" : estimatedShipping.toFixed(2) + " €"}</span></div>
+        {!freeShipping && (
+          <p className="text-xs text-brand-gray">Envio gratis a partir de {FREE_SHIPPING_THRESHOLD.toFixed(0)} €. Elige transportista en el siguiente paso.</p>
+        )}
         <div className="flex justify-between text-lg font-semibold pt-2 border-t border-brand-border">
-          <span>Total</span><span>{(total + SHIPPING_FLAT_RATE).toFixed(2)} €</span>
+          <span>Total</span><span>{(total + estimatedShipping).toFixed(2)} €</span>
         </div>
       </div>
 
