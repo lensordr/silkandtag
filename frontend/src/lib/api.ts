@@ -58,15 +58,16 @@ export const api = {
     });
     return handle(res);
   },
-  async getOrder(id: number | string) {
-    const res = await fetch(`${API_BASE}/api/orders/${id}`, { cache: "no-store" });
+  async getOrder(id: number | string, accessToken: string) {
+    const qs = accessToken ? `?t=${encodeURIComponent(accessToken)}` : "";
+    const res = await fetch(`${API_BASE}/api/orders/${id}${qs}`, { cache: "no-store" });
     return handle(res);
   },
-  async payOrder(id: number | string, sourceId: string) {
+  async payOrder(id: number | string, sourceId: string, accessToken: string) {
     const res = await fetch(`${API_BASE}/api/orders/${id}/pay`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_id: sourceId }),
+      body: JSON.stringify({ source_id: sourceId, access_token: accessToken }),
     });
     return handle(res);
   },

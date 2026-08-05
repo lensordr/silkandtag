@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Order } from "@/lib/types";
@@ -16,13 +16,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function OrderConfirmationPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!params.id) return;
-    api.getOrder(params.id as string).then(setOrder).catch(() => setOrder(null)).finally(() => setLoading(false));
-  }, [params.id]);
+    const token = searchParams.get("t") || "";
+    api.getOrder(params.id as string, token).then(setOrder).catch(() => setOrder(null)).finally(() => setLoading(false));
+  }, [params.id, searchParams]);
 
   if (loading) return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">Cargando...</div>;
 

@@ -1,11 +1,18 @@
+import io
 import os
+import secrets
 import shutil
+import time
 import uuid
+from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from PIL import Image, UnidentifiedImageError
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from . import models, schemas, auth, square_client
@@ -13,16 +20,44 @@ from .db import Base, engine, get_db
 
 Base.metadata.create_all(bind=engine)
 
+
+def _ensure_column(table: str, column: str, ddl_type: str):
+    """Idempotent, cross-DB (SQLite + Postgres) "add column if missing".
+    SQLAlchemy's create_all() only creates brand-new tables, it never alters
+    existing ones, so schema additions need this on every boot."""
+    with engine.connect() as conn:
+        try:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
+            conn.commit()
+        except Exception:
+            pass  # column already exists
+
+
+_ensure_column("orders", "access_token", "VARCHAR DEFAULT ''")
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(title="Silk & Tag API")
 
+# Only these origins may call the API from a browser. Wildcard "*" was
+# removed: it combined with allow_credentials to accept any site, which
+# would let a malicious page piggyback logged-in admin requests.
+DEFAULT_ORIGINS = (
+    "https://www.silkandtag.com,https://silkandtag.com,"
+    "https://silkandtag-gamma.vercel.app,"
+    "http://localhost:3000,http://127.0.0.1:3000,"
+    "http://localhost:3020,http://127.0.0.1:3020"
+)
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,  # auth uses a Bearer header, not cookies -- no credentials needed
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -40,6 +75,90 @@ def require_admin(authorization: Optional[str] = Header(None)):
     return payload
 
 
+def client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+# ---------- Login rate limiting (in-memory; single dyno) ----------
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+
+
+def check_login_rate_limit(ip: str):
+    now = time.time()
+    attempts = _login_attempts[ip]
+    attempts[:] = [t for t in attempts if now - t < LOGIN_WINDOW_SECONDS]
+    if len(attempts) >= LOGIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Intentalo de nuevo en unos minutos.")
+
+
+def record_login_failure(ip: str):
+    _login_attempts[ip].append(time.time())
+
+
+def record_login_success(ip: str):
+    _login_attempts.pop(ip, None)
+
+
+# ---------- Stale reservation cleanup ----------
+# A checkout that starts but is never paid would otherwise lock that product
+# as "reserved" forever, since nothing else ever reverted it. Self-heals on
+# every read/write instead of needing a separate scheduled job/dyno.
+RESERVATION_TIMEOUT_MINUTES = 30
+
+
+def expire_stale_reservations(db: Session):
+    cutoff = datetime.utcnow() - timedelta(minutes=RESERVATION_TIMEOUT_MINUTES)
+    stale_orders = (
+        db.query(models.Order)
+        .filter(models.Order.status == "pending_payment", models.Order.created_at < cutoff)
+        .all()
+    )
+    if not stale_orders:
+        return
+    for order in stale_orders:
+        order.status = "expired"
+        for item in order.items:
+            if item.product and item.product.status == "reserved":
+                item.product.status = "available"
+    db.commit()
+
+
+# ---------- Upload validation ----------
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
+
+def save_upload(img: UploadFile) -> str:
+    data = img.file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="La imagen supera el tamano maximo (8MB)")
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im.verify()  # confirms it's really a decodable image, not just a renamed file
+            detected_format = im.format
+    except (UnidentifiedImageError, Exception):
+        raise HTTPException(status_code=400, detail="El archivo no es una imagen valida")
+
+    ext = ALLOWED_IMAGE_TYPES.get(img.content_type)
+    if not ext:
+        ext = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}.get(detected_format or "", ".jpg")
+
+    fname = f"{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(UPLOAD_DIR, fname)
+    with open(dest, "wb") as f:
+        f.write(data)
+    return f"/uploads/{fname}"
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "silk-and-tag-api"}
@@ -47,9 +166,13 @@ def health():
 
 # ---------- Auth ----------
 @app.post("/api/admin/login", response_model=schemas.LoginOut)
-def login(data: schemas.LoginIn):
+def login(data: schemas.LoginIn, request: Request):
+    ip = client_ip(request)
+    check_login_rate_limit(ip)
     if not auth.verify_credentials(data.username, data.password):
+        record_login_failure(ip)
         raise HTTPException(status_code=401, detail="Usuario o contrasena incorrectos")
+    record_login_success(ip)
     return {"token": auth.create_token(data.username)}
 
 
@@ -62,6 +185,7 @@ def list_products(
     q: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    expire_stale_reservations(db)
     query = db.query(models.Product)
     if status:
         query = query.filter(models.Product.status == status)
@@ -79,6 +203,7 @@ def list_products(
 
 @app.get("/api/products/{product_id}", response_model=schemas.ProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
+    expire_stale_reservations(db)
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -107,16 +232,7 @@ def create_product(
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
-    image_urls = []
-    for img in images:
-        if not img.filename:
-            continue
-        ext = os.path.splitext(img.filename)[1] or ".jpg"
-        fname = f"{uuid.uuid4().hex}{ext}"
-        dest = os.path.join(UPLOAD_DIR, fname)
-        with open(dest, "wb") as f:
-            shutil.copyfileobj(img.file, f)
-        image_urls.append(f"/uploads/{fname}")
+    image_urls = [save_upload(img) for img in images if img.filename]
 
     product = models.Product(
         title=title,
@@ -170,16 +286,7 @@ def update_product(
         if value is not None:
             setattr(product, field, value)
 
-    new_urls = []
-    for img in images:
-        if not img.filename:
-            continue
-        ext = os.path.splitext(img.filename)[1] or ".jpg"
-        fname = f"{uuid.uuid4().hex}{ext}"
-        dest = os.path.join(UPLOAD_DIR, fname)
-        with open(dest, "wb") as f:
-            shutil.copyfileobj(img.file, f)
-        new_urls.append(f"/uploads/{fname}")
+    new_urls = [save_upload(img) for img in images if img.filename]
 
     if new_urls:
         if replace_images:
@@ -207,8 +314,20 @@ def delete_product(product_id: int, db: Session = Depends(get_db), _=Depends(req
 SHIPPING_FLAT_RATE = 4.95
 
 
+def require_order_access(order: models.Order, token: str):
+    """Order ids are small sequential integers and easy to guess/enumerate.
+    A random per-order token (known only to whoever created/paid the order)
+    is required to read or pay it, so a stranger can't browse other
+    customers' names, emails, phone numbers and addresses. 404 (not 403) on
+    mismatch, so it doesn't even confirm the order id exists."""
+    if not order.access_token or not token or not secrets.compare_digest(order.access_token, token):
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+
 @app.post("/api/orders", response_model=schemas.OrderOut)
 def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
+    expire_stale_reservations(db)
+
     if not data.items:
         raise HTTPException(status_code=400, detail="El pedido no tiene articulos")
 
@@ -237,6 +356,7 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
         subtotal=subtotal,
         shipping_cost=shipping_cost,
         total=subtotal + shipping_cost,
+        access_token=secrets.token_urlsafe(24),
     )
     db.add(order)
     db.flush()
@@ -257,10 +377,11 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/orders/{order_id}", response_model=schemas.OrderOut)
-def get_order(order_id: int, db: Session = Depends(get_db)):
+def get_order(order_id: int, t: str = "", db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    require_order_access(order, t)
     return order
 
 
@@ -269,6 +390,7 @@ def pay_order(order_id: int, data: schemas.PayOrderIn, db: Session = Depends(get
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    require_order_access(order, data.access_token)
     if order.status != "pending_payment":
         raise HTTPException(status_code=400, detail="Este pedido ya no esta pendiente de pago")
 
@@ -303,13 +425,19 @@ async def square_webhook(request: Request, db: Session = Depends(get_db)):
     changes asynchronously (captures, refunds, disputes). Matches the
     payment's reference_id back to our internal order id -- no manual
     lookup needed. Requires a public HTTPS URL registered in the Square
-    dashboard once the site is deployed; safe to leave unused on localhost."""
-    body = await request.body()
+    dashboard, and SQUARE_WEBHOOK_SIGNATURE_KEY set once that's done.
 
-    if square_client.SQUARE_WEBHOOK_SIGNATURE_KEY:
-        signature = request.headers.get("x-square-hmacsha256-signature", "")
-        if not square_client.verify_webhook_signature(str(request.url), body, signature):
-            raise HTTPException(status_code=401, detail="Firma de webhook invalida")
+    Fails closed: with no signature key configured, this endpoint refuses
+    every request instead of trusting an unsigned payload. Anyone can POST
+    arbitrary JSON to a public URL, so accepting unsigned "payment complete"
+    events would let a stranger mark any order paid for free."""
+    if not square_client.SQUARE_WEBHOOK_SIGNATURE_KEY:
+        raise HTTPException(status_code=503, detail="Webhook no configurado")
+
+    body = await request.body()
+    signature = request.headers.get("x-square-hmacsha256-signature", "")
+    if not square_client.verify_webhook_signature(str(request.url), body, signature):
+        raise HTTPException(status_code=401, detail="Firma de webhook invalida")
 
     payload = await request.json()
     event_type = payload.get("type", "")

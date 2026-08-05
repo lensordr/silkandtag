@@ -20,6 +20,7 @@ const SQUARE_SDK_SRC =
 type OrderOut = {
   id: number;
   total: number;
+  access_token: string;
 };
 
 declare global {
@@ -126,8 +127,8 @@ export default function CheckoutPage() {
         const msg = result.errors?.[0]?.message || "No se pudo procesar la tarjeta.";
         throw new Error(msg);
       }
-      await api.payOrder(order.id, result.token);
-      router.push(`/pedido/${order.id}`);
+      await api.payOrder(order.id, result.token, order.access_token);
+      router.push(`/pedido/${order.id}?t=${encodeURIComponent(order.access_token)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "El pago no se pudo completar. Intentalo de nuevo.");
     } finally {

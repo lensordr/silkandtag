@@ -54,6 +54,11 @@ class Order(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Random per-order secret. Required (in addition to the sequential id) to
+    # fetch or pay this order, so order ids can't be enumerated by guessing
+    # small integers to read other customers' names/addresses/emails.
+    access_token = Column(String, default="", index=True)
+
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 
 

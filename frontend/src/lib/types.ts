@@ -43,6 +43,7 @@ export interface Order {
   total: number;
   created_at: string;
   items: OrderItem[];
+  access_token: string;
 }
 
 export function productImages(p: Product): string[] {

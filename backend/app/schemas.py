@@ -90,6 +90,7 @@ class OrderOut(BaseModel):
     total: float
     created_at: datetime
     items: List[OrderItemOut] = []
+    access_token: str = ""
 
     class Config:
         from_attributes = True
@@ -97,6 +98,7 @@ class OrderOut(BaseModel):
 
 class PayOrderIn(BaseModel):
     source_id: str  # card token from the Square Web Payments SDK
+    access_token: str = ""
 
 
 class OrderStatusUpdate(BaseModel):
