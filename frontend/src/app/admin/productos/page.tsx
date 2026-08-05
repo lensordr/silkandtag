@@ -134,6 +134,7 @@ export default function AdminProductsPage() {
             <thead className="bg-[#F1EFE9] text-left">
               <tr>
                 <th className="p-3">Foto</th>
+                <th className="p-3">Codigo</th>
                 <th className="p-3">Titulo</th>
                 <th className="p-3">Categoria</th>
                 <th className="p-3">Talla</th>
@@ -155,6 +156,7 @@ export default function AdminProductsPage() {
                         )}
                       </div>
                     </td>
+                    <td className="p-3 font-mono font-semibold text-brand-orange">{p.code}</td>
                     <td className="p-3 font-medium">{p.title}</td>
                     <td className="p-3">{p.category}</td>
                     <td className="p-3">{p.size}</td>
@@ -195,9 +197,19 @@ export default function AdminProductsPage() {
             className="bg-white border border-brand-border w-full max-w-2xl p-6 my-8 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-serif-display text-xl">{editing ? "Editar producto" : "Nuevo producto"}</h2>
+              <h2 className="font-serif-display text-xl">
+                {editing ? "Editar producto" : "Nuevo producto"}
+                {editing && (
+                  <span className="ml-3 font-mono text-sm font-semibold text-brand-orange align-middle">{editing.code}</span>
+                )}
+              </h2>
               <button type="button" onClick={() => setShowForm(false)} className="text-2xl leading-none">×</button>
             </div>
+            {!editing && (
+              <p className="text-sm text-brand-gray mb-4">
+                El codigo interno (ej. ST-0007) se genera automaticamente al guardar.
+              </p>
+            )}
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">

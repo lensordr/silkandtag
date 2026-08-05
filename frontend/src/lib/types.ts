@@ -1,5 +1,6 @@
 export interface Product {
   id: number;
+  code: string;
   title: string;
   description: string;
   brand: string;
@@ -18,6 +19,7 @@ export interface OrderItem {
   id: number;
   product_id: number;
   title: string;
+  code: string;
   price: number;
 }
 

@@ -8,6 +8,7 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, default="")  # internal SKU e.g. ST-0007, shown to admin for packing
     title = Column(String, nullable=False)
     description = Column(Text, default="")
     brand = Column(String, default="")
@@ -63,6 +64,7 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     title = Column(String)
+    code = Column(String, default="")  # snapshot of the product code at order time, for packing
     price = Column(Float)
 
     order = relationship("Order", back_populates="items")

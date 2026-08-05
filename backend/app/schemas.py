@@ -18,6 +18,7 @@ class ProductBase(BaseModel):
 
 class ProductOut(ProductBase):
     id: int
+    code: str = ""
     image_urls: str = ""
     created_at: datetime
 
@@ -62,6 +63,7 @@ class OrderItemOut(BaseModel):
     id: int
     product_id: int
     title: str
+    code: str = ""
     price: float
 
     class Config:

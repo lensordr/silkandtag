@@ -90,9 +90,14 @@ export default function AdminOrdersPage() {
                     <h3 className="font-semibold mb-2">Articulos</h3>
                     <ul className="space-y-1">
                       {o.items.map((it) => (
-                        <li key={it.id} className="flex justify-between">
-                          <span>{it.title}</span>
-                          <span>{it.price.toFixed(2)} €</span>
+                        <li key={it.id} className="flex justify-between items-baseline gap-3">
+                          <span>
+                            <span className="inline-block mr-2 px-1.5 py-0.5 font-mono text-xs font-bold bg-brand-orange text-white">
+                              {it.code}
+                            </span>
+                            {it.title}
+                          </span>
+                          <span className="whitespace-nowrap">{it.price.toFixed(2)} €</span>
                         </li>
                       ))}
                     </ul>

@@ -132,6 +132,8 @@ def create_product(
         image_urls=",".join(image_urls),
     )
     db.add(product)
+    db.flush()
+    product.code = f"ST-{product.id:04d}"
     db.commit()
     db.refresh(product)
     return product
@@ -240,7 +242,13 @@ def create_order(data: schemas.OrderCreate, db: Session = Depends(get_db)):
     db.flush()
 
     for product in products:
-        db.add(models.OrderItem(order_id=order.id, product_id=product.id, title=product.title, price=product.price))
+        db.add(models.OrderItem(
+            order_id=order.id,
+            product_id=product.id,
+            title=product.title,
+            code=product.code,
+            price=product.price,
+        ))
         product.status = "reserved"
 
     db.commit()
