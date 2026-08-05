@@ -137,6 +137,19 @@ ALLOWED_IMAGE_TYPES = {
 }
 
 
+CLOUDINARY_ENABLED = bool(os.environ.get("CLOUDINARY_CLOUD_NAME"))
+if CLOUDINARY_ENABLED:
+    import cloudinary
+    import cloudinary.uploader
+
+    cloudinary.config(
+        cloud_name=os.environ["CLOUDINARY_CLOUD_NAME"],
+        api_key=os.environ["CLOUDINARY_API_KEY"],
+        api_secret=os.environ["CLOUDINARY_API_SECRET"],
+        secure=True,
+    )
+
+
 def save_upload(img: UploadFile) -> str:
     data = img.file.read()
     if len(data) > 8 * 1024 * 1024:
@@ -147,6 +160,15 @@ def save_upload(img: UploadFile) -> str:
             detected_format = im.format
     except (UnidentifiedImageError, Exception):
         raise HTTPException(status_code=400, detail="El archivo no es una imagen valida")
+
+    if CLOUDINARY_ENABLED:
+        result = cloudinary.uploader.upload(
+            io.BytesIO(data),
+            folder="silkandtag/products",
+            public_id=uuid.uuid4().hex,
+            resource_type="image",
+        )
+        return result["secure_url"]
 
     ext = ALLOWED_IMAGE_TYPES.get(img.content_type)
     if not ext:

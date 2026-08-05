@@ -9,3 +9,4 @@ httpx
 python-dotenv
 psycopg2-binary
 Pillow
+cloudinary
