@@ -19,6 +19,54 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isLoginPage, router]);
 
+  // Make the admin section (only) installable as a PWA on phones. Injected
+  // via JS rather than metadata export because this layout is a client
+  // component, and scoped to /admin so the public storefront is unaffected.
+  useEffect(() => {
+    const manifestLink = document.createElement("link");
+    manifestLink.rel = "manifest";
+    manifestLink.href = "/admin-manifest.json";
+    document.head.appendChild(manifestLink);
+
+    const themeColor = document.createElement("meta");
+    themeColor.name = "theme-color";
+    themeColor.content = "#111111";
+    document.head.appendChild(themeColor);
+
+    const appleCapable = document.createElement("meta");
+    appleCapable.name = "apple-mobile-web-app-capable";
+    appleCapable.content = "yes";
+    document.head.appendChild(appleCapable);
+
+    const appleStatusBar = document.createElement("meta");
+    appleStatusBar.name = "apple-mobile-web-app-status-bar-style";
+    appleStatusBar.content = "black-translucent";
+    document.head.appendChild(appleStatusBar);
+
+    const appleTitle = document.createElement("meta");
+    appleTitle.name = "apple-mobile-web-app-title";
+    appleTitle.content = "S&T Admin";
+    document.head.appendChild(appleTitle);
+
+    const appleIcon = document.createElement("link");
+    appleIcon.rel = "apple-touch-icon";
+    appleIcon.href = "/icons/apple-touch-icon.png";
+    document.head.appendChild(appleIcon);
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin/" }).catch(() => {});
+    }
+
+    return () => {
+      manifestLink.remove();
+      themeColor.remove();
+      appleCapable.remove();
+      appleStatusBar.remove();
+      appleTitle.remove();
+      appleIcon.remove();
+    };
+  }, []);
+
   if (isLoginPage) return <>{children}</>;
   if (!checked) return null;
 
