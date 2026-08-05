@@ -18,6 +18,18 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [trackingDraft, setTrackingDraft] = useState<Record<number, string>>({});
+  const [search, setSearch] = useState("");
+
+  const filteredOrders = orders.filter((o) => {
+    if (!search.trim()) return true;
+    const term = search.trim().toLowerCase();
+    return (
+      o.items.some((it) => it.code.toLowerCase().includes(term)) ||
+      o.customer_name.toLowerCase().includes(term) ||
+      o.email.toLowerCase().includes(term) ||
+      String(o.id).includes(term)
+    );
+  });
 
   function load() {
     setLoading(true);
@@ -50,13 +62,22 @@ export default function AdminOrdersPage() {
     <div>
       <h1 className="font-serif-display text-3xl mb-6">Pedidos</h1>
 
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar por referencia (ST-0001), cliente, email o numero de pedido..."
+        className="border border-brand-border px-3 py-2 w-full mb-6"
+      />
+
       {loading ? (
         <p className="text-brand-gray">Cargando...</p>
-      ) : orders.length === 0 ? (
-        <p className="text-brand-gray">Todavia no hay pedidos.</p>
+      ) : filteredOrders.length === 0 ? (
+        <p className="text-brand-gray">
+          {orders.length === 0 ? "Todavia no hay pedidos." : "Ningun pedido coincide con la busqueda."}
+        </p>
       ) : (
         <div className="space-y-3">
-          {orders.map((o) => (
+          {filteredOrders.map((o) => (
             <div key={o.id} className="border border-brand-border bg-white">
               <button
                 onClick={() => setExpanded(expanded === o.id ? null : o.id)}
@@ -64,7 +85,10 @@ export default function AdminOrdersPage() {
               >
                 <div>
                   <p className="font-semibold">#{o.id} · {o.customer_name}</p>
-                  <p className="text-sm text-brand-gray">{new Date(o.created_at).toLocaleString("es-ES")} · {o.city}</p>
+                  <p className="text-sm text-brand-gray">
+                    {new Date(o.created_at).toLocaleString("es-ES")} · {o.city} ·{" "}
+                    {o.items.map((it) => it.code).join(", ")}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-semibold">{o.total.toFixed(2)} €</span>

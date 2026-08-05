@@ -81,6 +81,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/pedidos" className={pathname.startsWith("/admin/pedidos") ? "text-brand-orange" : ""}>
               Pedidos
             </Link>
+            <Link href="/admin/analiticas" className={pathname.startsWith("/admin/analiticas") ? "text-brand-orange" : ""}>
+              Analiticas
+            </Link>
             <Link href="/" className="text-white/60 hover:text-white">Ver tienda ↗</Link>
           </div>
           <button

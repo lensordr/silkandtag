@@ -108,7 +108,7 @@ def record_login_success(ip: str):
 # A checkout that starts but is never paid would otherwise lock that product
 # as "reserved" forever, since nothing else ever reverted it. Self-heals on
 # every read/write instead of needing a separate scheduled job/dyno.
-RESERVATION_TIMEOUT_MINUTES = 30
+RESERVATION_TIMEOUT_MINUTES = 10
 
 
 def expire_stale_reservations(db: Session):
@@ -501,6 +501,42 @@ async def square_webhook(request: Request, db: Session = Depends(get_db)):
 @app.get("/api/admin/orders", response_model=List[schemas.OrderOut])
 def admin_list_orders(db: Session = Depends(get_db), _=Depends(require_admin)):
     return db.query(models.Order).order_by(models.Order.created_at.desc()).all()
+
+
+@app.get("/api/admin/analytics")
+def admin_analytics(db: Session = Depends(get_db), _=Depends(require_admin)):
+    products = db.query(models.Product).all()
+    orders = db.query(models.Order).all()
+
+    by_category: dict[str, dict[str, int]] = {}
+    by_status = {"available": 0, "reserved": 0, "sold": 0}
+    for p in products:
+        cat = p.category or "Sin categoria"
+        by_category.setdefault(cat, {"available": 0, "reserved": 0, "sold": 0, "total": 0})
+        by_category[cat]["total"] += 1
+        if p.status in by_category[cat]:
+            by_category[cat][p.status] += 1
+        if p.status in by_status:
+            by_status[p.status] += 1
+
+    orders_by_status: dict[str, int] = {}
+    revenue_paid = 0.0
+    revenue_orders = 0
+    for o in orders:
+        orders_by_status[o.status] = orders_by_status.get(o.status, 0) + 1
+        if o.status in ("paid", "shipped", "delivered"):
+            revenue_paid += o.total
+            revenue_orders += 1
+
+    return {
+        "total_products": len(products),
+        "products_by_status": by_status,
+        "products_by_category": [
+            {"category": cat, **counts} for cat, counts in sorted(by_category.items())
+        ],
+        "orders_by_status": orders_by_status,
+        "revenue": {"total": round(revenue_paid, 2), "orders_count": revenue_orders},
+    }
 
 
 @app.put("/api/admin/orders/{order_id}", response_model=schemas.OrderOut)

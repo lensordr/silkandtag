@@ -129,4 +129,11 @@ export const api = {
     });
     return handle(res);
   },
+  async adminAnalytics() {
+    const res = await fetch(`${API_BASE}/api/admin/analytics`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
 };

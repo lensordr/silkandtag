@@ -6,12 +6,11 @@ import ProductCard from "@/components/ProductCard";
 import { api } from "@/lib/api";
 import { Product } from "@/lib/types";
 
-const CATEGORIES = ["Chaquetas", "Vestidos", "Camisas", "Pantalones", "Zapatos", "Bolsos", "Accesorios"];
-
 function ShopContent() {
   const params = useSearchParams();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const category = params.get("category") || "";
   const q = params.get("q") || "";
@@ -27,6 +26,22 @@ function ShopContent() {
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   }, [category, q]);
+
+  // Category filter buttons should only ever show categories that currently
+  // have at least one available item -- otherwise clients see empty
+  // categories, and newly-added categories never show up until someone
+  // manually edits this list. Derived from the full available catalog
+  // (unfiltered by the active category selection).
+  useEffect(() => {
+    api
+      .listProducts({ status: "available" })
+      .then((all: Product[]) => {
+        const distinct = Array.from(new Set(all.map((p) => p.category).filter(Boolean)));
+        distinct.sort((a, b) => a.localeCompare(b, "es"));
+        setCategories(distinct);
+      })
+      .catch(() => setCategories([]));
+  }, []);
 
   function setCategory(c: string) {
     const sp = new URLSearchParams(params.toString());
@@ -47,7 +62,7 @@ function ShopContent() {
         >
           Todo
         </button>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}
