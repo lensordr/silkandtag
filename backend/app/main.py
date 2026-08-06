@@ -607,7 +607,11 @@ def admin_update_order(
         order.status = data.status
         if data.status == "cancelled":
             for item in order.items:
-                if item.product:
+                # Only release the product if it's still reserved by *this*
+                # order. If it's already "sold" the product was paid for
+                # through a different, newer order -- cancelling this stale
+                # one must never un-sell it (would allow a double-sell).
+                if item.product and item.product.status == "reserved":
                     item.product.status = "available"
             if order.promo_code:
                 promo = db.query(models.PromoCode).filter(models.PromoCode.code == order.promo_code).first()
