@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Product, productImages } from "@/lib/types";
 import { mediaUrl } from "@/lib/api";
 
+const NEW_WINDOW_DAYS = 10; // items added in the last N days get a "Nuevo" tag
+
 export default function ProductCard({ product }: { product: Product }) {
   const images = productImages(product);
   const cover = images[0];
@@ -9,6 +11,9 @@ export default function ProductCard({ product }: { product: Product }) {
     product.original_price && product.original_price > product.price
       ? Math.round(100 - (product.price / product.original_price) * 100)
       : null;
+  const isNew =
+    !discount &&
+    Date.now() - new Date(product.created_at).getTime() < NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
   return (
     <Link
@@ -28,9 +33,15 @@ export default function ProductCard({ product }: { product: Product }) {
             Sin foto
           </div>
         )}
+
         {discount && (
           <span className="absolute top-3 left-3 bg-brand-orange text-white text-xs font-semibold px-2 py-1">
             -{discount}%
+          </span>
+        )}
+        {!discount && isNew && (
+          <span className="absolute top-3 left-3 bg-brand-black text-white text-xs font-semibold px-2 py-1 uppercase">
+            Nuevo
           </span>
         )}
         {product.status !== "available" && (
@@ -38,6 +49,13 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.status === "sold" ? "Vendido" : "Reservado"}
           </span>
         )}
+
+        {/* Quick-view overlay, matching the reference template's hover pattern */}
+        <div className="absolute inset-x-0 bottom-0 flex justify-center gap-3 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 bg-gradient-to-t from-black/60 to-transparent">
+          <span className="bg-white text-brand-black text-xs font-semibold uppercase tracking-wide px-3 py-2 group-hover:bg-brand-orange group-hover:text-white transition-colors">
+            Ver producto
+          </span>
+        </div>
       </div>
       <div className="p-4">
         <p className="text-xs uppercase tracking-wider text-brand-gray">{product.brand || product.category}</p>
