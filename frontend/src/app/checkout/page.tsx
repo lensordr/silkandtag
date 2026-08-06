@@ -123,6 +123,18 @@ export default function CheckoutPage() {
   }
 
   useEffect(() => {
+    if (step !== "payment" || cardReady || error) return;
+    const timer = setTimeout(() => {
+      if (!cardReady) {
+        setError(
+          "El formulario de pago esta tardando demasiado en cargar. Comprueba tu conexion o desactiva bloqueadores de anuncios/privacidad (pueden bloquear squarecdn.com) e intentalo de nuevo."
+        );
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [step, cardReady, error]);
+
+  useEffect(() => {
     if (step !== "payment" || !squareLoaded || !order) return;
     if (attachedOrderId.current === order.id) return;
     if (!window.Square || !SQUARE_APP_ID || !SQUARE_LOCATION_ID) {
@@ -186,6 +198,11 @@ export default function CheckoutPage() {
         src={SQUARE_SDK_SRC}
         strategy="afterInteractive"
         onLoad={() => setSquareLoaded(true)}
+        onError={() =>
+          setError(
+            "No se pudo cargar el formulario de pago (squarecdn.com bloqueado). Desactiva bloqueadores de anuncios/privacidad e intentalo de nuevo."
+          )
+        }
       />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 grid gap-10 md:grid-cols-[1.4fr_1fr]">
         <div>
