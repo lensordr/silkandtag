@@ -63,7 +63,11 @@ class OrderCreate(BaseModel):
 
 class OrderItemOut(BaseModel):
     id: int
-    product_id: int
+    # Optional: the underlying product can be deleted from admin later
+    # (e.g. once sold and no longer needed) while the order/line item stays
+    # for record-keeping -- title/code/price below are a snapshot taken at
+    # order time and remain correct even if product_id becomes null.
+    product_id: Optional[int] = None
     title: str
     code: str = ""
     price: float

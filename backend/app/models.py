@@ -88,7 +88,11 @@ class OrderItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"))
-    product_id = Column(Integer, ForeignKey("products.id"))
+    # ON DELETE SET NULL: deleting a product from admin must not be blocked
+    # just because it appears in historical order line items. title/code/price
+    # above are already a snapshot taken at order time, so the order stays
+    # fully readable even after the product row itself is gone.
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
     title = Column(String)
     code = Column(String, default="")  # snapshot of the product code at order time, for packing
     price = Column(Float)
