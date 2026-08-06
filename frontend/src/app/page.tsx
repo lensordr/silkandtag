@@ -89,6 +89,41 @@ export default async function HomePage() {
         )}
       </section>
 
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+        <div className="text-center mb-10">
+          <p className="uppercase tracking-[0.2em] text-brand-orange text-sm font-semibold mb-3">
+            Silk &amp; Tag en cualquier parte
+          </p>
+          <h2 className="font-serif-display text-2xl">Vive Espana con estilo circular</h2>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <div className="aspect-[3/4] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/lifestyle/montana.jpg"
+              alt="Silk & Tag en la montana"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+          <div className="aspect-[3/4] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/lifestyle/calle.jpg"
+              alt="Silk & Tag paseando por un pueblo espanol"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+          <div className="aspect-[3/4] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/lifestyle/playa.jpg"
+              alt="Silk & Tag en la playa"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="bg-brand-black text-white py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid gap-8 sm:grid-cols-3 text-center">
           <div>
