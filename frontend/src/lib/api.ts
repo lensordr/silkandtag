@@ -202,4 +202,40 @@ export const api = {
     });
     return handle(res);
   },
+  async referenceList() {
+    const res = await fetch(`${API_BASE}/api/admin/reference`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
+  async referenceCreate(payload: unknown) {
+    const res = await fetch(`${API_BASE}/api/admin/reference`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAdminToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    return handle(res);
+  },
+  async referenceUpdate(id: number, payload: unknown) {
+    const res = await fetch(`${API_BASE}/api/admin/reference/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAdminToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    return handle(res);
+  },
+  async referenceDelete(id: number) {
+    const res = await fetch(`${API_BASE}/api/admin/reference/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
 };

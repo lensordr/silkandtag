@@ -90,6 +90,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/resellscan" className={pathname.startsWith("/admin/resellscan") ? "text-brand-orange" : ""}>
               Scan
             </Link>
+            <Link href="/admin/referencias" className={pathname.startsWith("/admin/referencias") ? "text-brand-orange" : ""}>
+              Referencias
+            </Link>
             <Link href="/" className="text-white/60 hover:text-white">Ver tienda ↗</Link>
           </div>
           <button

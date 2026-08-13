@@ -145,3 +145,29 @@ class ScannedItem(Base):
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ReferenceEntry(Base):
+    """ResellScan Phase 2 -- manually-curated brand/comp knowledge base.
+
+    Not inventory (that's ScannedItem). This is reference data the reseller
+    researches once (Vinted comps, known authenticity hallmarks) and reuses
+    every time a matching item gets scanned. Starts empty; grows over time.
+    """
+    __tablename__ = "reference_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    brand = Column(String, nullable=False)
+    product_name = Column(String, nullable=True)  # optional: specific model/style
+    category = Column(String, nullable=True)
+    condition = Column(String, nullable=True)
+
+    vinted_price = Column(Float, nullable=True)
+    website_price = Column(Float, nullable=True)
+    quick_sale_price = Column(Float, nullable=True)
+
+    authenticity_notes = Column(Text, default="")  # known hallmarks, fake tells, RN#, tag font...
+    source_url = Column(String, nullable=True)  # e.g. the Vinted listing this comp came from
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

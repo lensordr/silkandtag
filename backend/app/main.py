@@ -719,3 +719,6 @@ def admin_delete_promocode(promo_id: int, db: Session = Depends(get_db), _=Depen
 # back (avoids a circular-import failure at startup).
 from .resellscan import router as resellscan_router  # noqa: E402
 app.include_router(resellscan_router)
+
+from .reference import router as reference_router  # noqa: E402
+app.include_router(reference_router)
