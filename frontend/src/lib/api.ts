@@ -180,4 +180,26 @@ export const api = {
     });
     return handle(res);
   },
+  async resellscanList() {
+    const res = await fetch(`${API_BASE}/api/admin/resellscan/items`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
+  async resellscanScan(formData: FormData) {
+    const res = await fetch(`${API_BASE}/api/admin/resellscan/scan`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+      body: formData,
+    });
+    return handle(res);
+  },
+  async resellscanDelete(id: number) {
+    const res = await fetch(`${API_BASE}/api/admin/resellscan/items/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getAdminToken()}` },
+    });
+    return handle(res);
+  },
 };

@@ -99,3 +99,49 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+
+
+class ScannedItem(Base):
+    """ResellScan MVP -- Phase 1: scan/upload -> AI identifies clothing.
+
+    Every AI-extracted field is nullable and paired with a confidence score.
+    Never fabricated: if the AI can't tell, the field stays null and the
+    confidence stays null too, rather than guessing a value. analysis_json
+    keeps the full raw structured response (visible_features, notes, etc.)
+    for the detail view without needing a column per possible field.
+    """
+    __tablename__ = "scanned_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    image_urls = Column(Text, default="")  # comma-separated, same convention as Product
+    photo_labels = Column(Text, default="")  # comma-separated, same order as image_urls (front, back, logo...)
+
+    brand = Column(String, nullable=True)
+    brand_confidence = Column(Float, nullable=True)
+    product_name = Column(String, nullable=True)
+    product_name_confidence = Column(Float, nullable=True)
+    category = Column(String, nullable=True)
+    category_confidence = Column(Float, nullable=True)
+    gender = Column(String, nullable=True)
+    colour = Column(String, nullable=True)
+    colour_confidence = Column(Float, nullable=True)
+    size = Column(String, nullable=True)
+    size_confidence = Column(Float, nullable=True)
+    sku = Column(String, nullable=True)
+    sku_confidence = Column(Float, nullable=True)
+    style_code = Column(String, nullable=True)
+    material = Column(String, nullable=True)
+    estimated_retail_price = Column(Float, nullable=True)
+
+    condition = Column(String, nullable=True)  # NEW_WITH_TAGS..POOR
+    condition_confidence = Column(Float, nullable=True)
+    defects = Column(Text, default="")  # comma-separated short defect descriptions
+
+    analysis_json = Column(Text, default="")  # full raw AI response (visible_features, notes...)
+    ai_provider = Column(String, default="")  # e.g. "gemini-2.0-flash", "" if analysis never ran
+    ai_error = Column(Text, default="")  # set when analysis failed or wasn't configured
+
+    status = Column(String, default="scanned")  # scanned -> (later phases) saved / listed
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -152,7 +152,7 @@ if CLOUDINARY_ENABLED:
     )
 
 
-def save_upload(img: UploadFile) -> str:
+def save_upload(img: UploadFile, folder: str = "silkandtag/products") -> str:
     data = img.file.read()
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="La imagen supera el tamano maximo (8MB)")
@@ -166,7 +166,7 @@ def save_upload(img: UploadFile) -> str:
     if CLOUDINARY_ENABLED:
         result = cloudinary.uploader.upload(
             io.BytesIO(data),
-            folder="silkandtag/products",
+            folder=folder,
             public_id=uuid.uuid4().hex,
             resource_type="image",
         )
@@ -712,3 +712,10 @@ def admin_delete_promocode(promo_id: int, db: Session = Depends(get_db), _=Depen
     db.delete(promo)
     db.commit()
     return {"ok": True}
+
+
+# ResellScan router: imported at the very end so require_admin/save_upload
+# already exist in this module's namespace when resellscan.py imports them
+# back (avoids a circular-import failure at startup).
+from .resellscan import router as resellscan_router  # noqa: E402
+app.include_router(resellscan_router)
