@@ -129,7 +129,7 @@ def get_analysis_service() -> AIAnalysisService:
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return NotConfiguredAnalysisService()
-    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
     return GeminiAnalysisService(api_key=api_key, model=model)
 
 
