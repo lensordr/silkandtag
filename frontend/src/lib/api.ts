@@ -202,6 +202,17 @@ export const api = {
     });
     return handle(res);
   },
+  async resellscanPublish(id: number, payload: unknown) {
+    const res = await fetch(`${API_BASE}/api/admin/resellscan/items/${id}/publish`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAdminToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    return handle(res);
+  },
   async referenceList() {
     const res = await fetch(`${API_BASE}/api/admin/reference`, {
       cache: "no-store",

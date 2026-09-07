@@ -137,6 +137,11 @@ class ScannedItem(Base):
     condition_confidence = Column(Float, nullable=True)
     defects = Column(Text, default="")  # comma-separated short defect descriptions
 
+    # Ready-to-publish listing copy the AI drafts from the same photos, in the
+    # storefront's language (Spanish), Vinted-style. Editable by the admin
+    # before publishing; the only field they must fill in by hand is the price.
+    suggested_title = Column(String, nullable=True)
+    suggested_description = Column(Text, nullable=True)
     analysis_json = Column(Text, default="")  # full raw AI response (visible_features, notes...)
     ai_provider = Column(String, default="")  # e.g. "gemini-2.0-flash", "" if analysis never ran
     ai_error = Column(Text, default="")  # set when analysis failed or wasn't configured
