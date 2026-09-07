@@ -181,32 +181,50 @@ class GeminiAnalysisService(AIAnalysisService):
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1},
         }
 
-        # Gemini occasionally returns transient errors (503 UNAVAILABLE on demand
-        # spikes, 429 rate limit, 500). Those are worth retrying with a short
-        # backoff instead of surfacing a scary error to the reseller. Non-transient
-        # errors (bad key, bad request) are returned immediately -- retrying them
-        # would just waste time.
+        # Gemini calls run synchronously inside the HTTP request, but Heroku's
+        # router hard-kills any request that takes longer than 30s (H12). So the
+        # whole analyze() call MUST finish well under that, otherwise the browser
+        # just sees the connection drop ("NetworkError") instead of a real answer.
+        #
+        # We therefore work to a strict total budget: retry transient errors
+        # (503 UNAVAILABLE spikes, 429, 500) only while there is enough time left,
+        # and size each attempt's timeout to the remaining budget. If we run out
+        # of budget we return a clear "try again" message -- a real HTTP response,
+        # never an H12. Non-transient errors (bad key/request) return immediately.
         TRANSIENT_STATUSES = {429, 500, 503}
-        MAX_ATTEMPTS = 4
+        TOTAL_BUDGET_SECONDS = 26.0  # safely under Heroku's 30s router timeout
+        MAX_ATTEMPTS = 3
+        MIN_ATTEMPT_TIMEOUT = 6.0  # don't start an attempt we can't give a fair chance
+
+        deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         resp = None
         for attempt in range(MAX_ATTEMPTS):
+            remaining = deadline - time.monotonic()
+            if remaining < MIN_ATTEMPT_TIMEOUT:
+                break  # not enough time for another real attempt
+            attempt_timeout = min(20.0, remaining)
             try:
-                resp = httpx.post(url, params={"key": self.api_key}, json=body, timeout=60.0)
-            except httpx.HTTPError as e:
-                if attempt < MAX_ATTEMPTS - 1:
-                    time.sleep(2 ** attempt)  # 1s, 2s, 4s
+                resp = httpx.post(
+                    url, params={"key": self.api_key}, json=body, timeout=attempt_timeout
+                )
+            except httpx.HTTPError:
+                backoff = 1.5 * (attempt + 1)
+                if attempt < MAX_ATTEMPTS - 1 and (deadline - time.monotonic()) > (backoff + MIN_ATTEMPT_TIMEOUT):
+                    time.sleep(backoff)
                     continue
-                return {"error": f"No se pudo contactar el servicio de IA: {e}"}
+                break
 
             if resp.status_code == 200:
                 break
-            if resp.status_code in TRANSIENT_STATUSES and attempt < MAX_ATTEMPTS - 1:
-                time.sleep(2 ** attempt)  # 1s, 2s, 4s
-                continue
+            if resp.status_code in TRANSIENT_STATUSES:
+                backoff = 1.5 * (attempt + 1)
+                if attempt < MAX_ATTEMPTS - 1 and (deadline - time.monotonic()) > (backoff + MIN_ATTEMPT_TIMEOUT):
+                    time.sleep(backoff)
+                    continue
             break
 
         if resp is None:
-            return {"error": "No se pudo contactar el servicio de IA. Intentalo de nuevo en unos segundos."}
+            return {"error": "El servicio de IA esta tardando demasiado ahora mismo. Espera unos segundos y vuelve a analizar la prenda."}
 
         if resp.status_code != 200:
             if resp.status_code in TRANSIENT_STATUSES:
