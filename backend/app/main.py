@@ -36,6 +36,8 @@ def _ensure_column(table: str, column: str, ddl_type: str):
 _ensure_column("orders", "access_token", "VARCHAR DEFAULT ''")
 _ensure_column("orders", "promo_code", "VARCHAR DEFAULT ''")
 _ensure_column("orders", "discount_amount", "FLOAT DEFAULT 0.0")
+_ensure_column("scanned_items", "suggested_title", "VARCHAR")
+_ensure_column("scanned_items", "suggested_description", "TEXT")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
