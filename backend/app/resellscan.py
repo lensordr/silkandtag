@@ -12,6 +12,7 @@ configured" result instead of failing or fabricating data.
 import json
 import base64
 import os
+import time
 from typing import List, Optional
 
 import httpx
@@ -179,12 +180,37 @@ class GeminiAnalysisService(AIAnalysisService):
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1},
         }
-        try:
-            resp = httpx.post(url, params={"key": self.api_key}, json=body, timeout=60.0)
-        except httpx.HTTPError as e:
-            return {"error": f"No se pudo contactar el servicio de IA: {e}"}
+
+        # Gemini occasionally returns transient errors (503 UNAVAILABLE on demand
+        # spikes, 429 rate limit, 500). Those are worth retrying with a short
+        # backoff instead of surfacing a scary error to the reseller. Non-transient
+        # errors (bad key, bad request) are returned immediately -- retrying them
+        # would just waste time.
+        TRANSIENT_STATUSES = {429, 500, 503}
+        MAX_ATTEMPTS = 4
+        resp = None
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                resp = httpx.post(url, params={"key": self.api_key}, json=body, timeout=60.0)
+            except httpx.HTTPError as e:
+                if attempt < MAX_ATTEMPTS - 1:
+                    time.sleep(2 ** attempt)  # 1s, 2s, 4s
+                    continue
+                return {"error": f"No se pudo contactar el servicio de IA: {e}"}
+
+            if resp.status_code == 200:
+                break
+            if resp.status_code in TRANSIENT_STATUSES and attempt < MAX_ATTEMPTS - 1:
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+                continue
+            break
+
+        if resp is None:
+            return {"error": "No se pudo contactar el servicio de IA. Intentalo de nuevo en unos segundos."}
 
         if resp.status_code != 200:
+            if resp.status_code in TRANSIENT_STATUSES:
+                return {"error": "El servicio de IA esta saturado ahora mismo. Espera unos segundos y vuelve a analizar la prenda."}
             return {"error": f"El servicio de IA devolvio un error ({resp.status_code}): {resp.text[:300]}"}
 
         try:
