@@ -12,6 +12,7 @@ configured" result instead of failing or fabricating data.
 import json
 import base64
 import os
+import re
 import time
 from typing import List, Optional
 
@@ -195,18 +196,39 @@ class GeminiAnalysisService(AIAnalysisService):
         # whole analyze() call MUST finish well under that, otherwise the browser
         # just sees the connection drop ("NetworkError") instead of a real answer.
         #
-        # We therefore work to a strict total budget: retry transient errors
-        # (503 UNAVAILABLE spikes, 429, 500) only while there is enough time left,
-        # and size each attempt's timeout to the remaining budget. If we run out
-        # of budget we return a clear "try again" message -- a real HTTP response,
-        # never an H12. Non-transient errors (bad key/request) return immediately.
+        # We work to a strict total budget: retry genuinely transient errors
+        # (503 UNAVAILABLE spikes, short per-minute 429s, 500) while there is
+        # enough time left. A *daily quota* 429 (RESOURCE_EXHAUSTED, free-tier
+        # limit) is NOT worth retrying -- Google says "retry in ~60s", which can
+        # never fit in one request -- so we detect it and return immediately with
+        # a clear message. If we run out of budget we still return a real HTTP
+        # response, never an H12. Non-transient errors return immediately too.
         TRANSIENT_STATUSES = {429, 500, 503}
         TOTAL_BUDGET_SECONDS = 23.0  # uploads are compressed+fast now, so give retries more room (still < Heroku 30s)
         MAX_ATTEMPTS = 5
         MIN_ATTEMPT_TIMEOUT = 4.0  # don't start an attempt we can't give a fair chance
 
+        def _is_daily_quota(r) -> bool:
+            """A 429 that means the daily/free-tier quota is exhausted, not a
+            short burst limit. Retrying inside this request is pointless."""
+            if r.status_code != 429:
+                return False
+            txt = (r.text or "")
+            if "RESOURCE_EXHAUSTED" not in txt and "free_tier" not in txt and "PerDay" not in txt:
+                return False
+            # If Google asks us to wait longer than our whole budget, it's a
+            # hard limit as far as this request is concerned.
+            m = re.search(r'"retryDelay":\s*"(\d+(?:\.\d+)?)s"', txt)
+            if m:
+                try:
+                    return float(m.group(1)) > MIN_ATTEMPT_TIMEOUT
+                except ValueError:
+                    pass
+            return True  # RESOURCE_EXHAUSTED with no/short delay info -> treat as quota
+
         deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         resp = None
+        quota_exhausted = False
         for attempt in range(MAX_ATTEMPTS):
             remaining = deadline - time.monotonic()
             if remaining < MIN_ATTEMPT_TIMEOUT:
@@ -225,12 +247,18 @@ class GeminiAnalysisService(AIAnalysisService):
 
             if resp.status_code == 200:
                 break
+            if _is_daily_quota(resp):
+                quota_exhausted = True
+                break  # retrying won't help -- daily limit reached
             if resp.status_code in TRANSIENT_STATUSES:
                 backoff = 1.5 * (attempt + 1)
                 if attempt < MAX_ATTEMPTS - 1 and (deadline - time.monotonic()) > (backoff + MIN_ATTEMPT_TIMEOUT):
                     time.sleep(backoff)
                     continue
             break
+
+        if quota_exhausted:
+            return {"error": "Se ha alcanzado el limite diario de la IA (plan gratuito). Vuelve a intentarlo mas tarde o amplia el plan de la clave de API."}
 
         if resp is None:
             return {"error": "El servicio de IA esta tardando demasiado ahora mismo. Espera unos segundos y vuelve a analizar la prenda."}
