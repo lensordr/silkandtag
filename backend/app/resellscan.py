@@ -201,9 +201,9 @@ class GeminiAnalysisService(AIAnalysisService):
         # of budget we return a clear "try again" message -- a real HTTP response,
         # never an H12. Non-transient errors (bad key/request) return immediately.
         TRANSIENT_STATUSES = {429, 500, 503}
-        TOTAL_BUDGET_SECONDS = 18.0  # leave room for image uploads within Heroku's 30s limit
-        MAX_ATTEMPTS = 3
-        MIN_ATTEMPT_TIMEOUT = 5.0  # don't start an attempt we can't give a fair chance
+        TOTAL_BUDGET_SECONDS = 23.0  # uploads are compressed+fast now, so give retries more room (still < Heroku 30s)
+        MAX_ATTEMPTS = 5
+        MIN_ATTEMPT_TIMEOUT = 4.0  # don't start an attempt we can't give a fair chance
 
         deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         resp = None
