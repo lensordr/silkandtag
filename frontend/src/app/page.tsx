@@ -5,19 +5,22 @@ import { Product } from "@/lib/types";
 
 const CATEGORIES = [
   "Chaquetas",
-  "Vestidos",
   "Camisas",
+  "Camisetas",
+  "Sudaderas",
   "Pantalones",
+  "Vestidos",
   "Zapatos",
   "Bolsos",
 ];
 
-// Category banner tiles use the brand lifestyle photos as a backdrop --
-// real per-category photography can replace these once it exists.
+// Category banner tiles use the brand's own category photography.
 const BANNER_TILES = [
-  { category: "Chaquetas", label: "Chaquetas y abrigos", img: "/images/lifestyle/montana.jpg" },
-  { category: "Camisas", label: "Camisas y camisetas", img: "/images/lifestyle/calle.jpg" },
-  { category: "Zapatos", label: "Zapatos y accesorios", img: "/images/lifestyle/playa.jpg" },
+  { category: "Chaquetas", label: "Chaquetas y abrigos", img: "/images/website/Jackets.jpg" },
+  { category: "Camisas", label: "Camisas", img: "/images/website/Shirts.jpg" },
+  { category: "Camisetas", label: "Camisetas", img: "/images/website/Tshirts.jpg" },
+  { category: "Sudaderas", label: "Sudaderas", img: "/images/website/Sweatshirts.jpg" },
+  { category: "Pantalones", label: "Pantalones", img: "/images/website/Pants.jpg" },
 ];
 
 export default async function HomePage() {
@@ -37,7 +40,7 @@ export default async function HomePage() {
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/lifestyle/playa.jpg"
+            src="/images/website/Background.jpg"
             alt=""
             className="w-full h-full object-cover"
           />
@@ -66,42 +69,29 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Category banner: 3 asymmetric image tiles, same staggered layout as the reference */}
+      {/* Category banner: one tile per category, using the brand's category photos */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid grid-cols-12 gap-5">
-          <Link
-            href={`/tienda?category=${encodeURIComponent(BANNER_TILES[0].category)}`}
-            className="group relative col-span-12 lg:col-span-7 lg:col-start-6 aspect-[16/9] overflow-hidden"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={BANNER_TILES[0].img} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className="absolute inset-0 bg-black/25 flex flex-col items-start justify-center px-8">
-              <h2 className="text-white font-serif-display text-2xl mb-2">{BANNER_TILES[0].label}</h2>
-              <span className="text-white text-sm font-semibold uppercase tracking-wide border-b border-white pb-1">Ver tienda</span>
-            </div>
-          </Link>
-          <Link
-            href={`/tienda?category=${encodeURIComponent(BANNER_TILES[1].category)}`}
-            className="group relative col-span-12 sm:col-span-6 lg:col-span-5 aspect-[4/5] overflow-hidden"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={BANNER_TILES[1].img} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className="absolute inset-0 bg-black/25 flex flex-col items-start justify-center px-8">
-              <h2 className="text-white font-serif-display text-2xl mb-2">{BANNER_TILES[1].label}</h2>
-              <span className="text-white text-sm font-semibold uppercase tracking-wide border-b border-white pb-1">Ver tienda</span>
-            </div>
-          </Link>
-          <Link
-            href={`/tienda?category=${encodeURIComponent(BANNER_TILES[2].category)}`}
-            className="group relative col-span-12 sm:col-span-6 lg:col-span-7 aspect-[4/5] lg:aspect-[16/9] overflow-hidden"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={BANNER_TILES[2].img} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className="absolute inset-0 bg-black/25 flex flex-col items-start justify-center px-8">
-              <h2 className="text-white font-serif-display text-2xl mb-2">{BANNER_TILES[2].label}</h2>
-              <span className="text-white text-sm font-semibold uppercase tracking-wide border-b border-white pb-1">Ver tienda</span>
-            </div>
-          </Link>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {BANNER_TILES.map((tile) => (
+            <Link
+              key={tile.category}
+              href={`/tienda?category=${encodeURIComponent(tile.category)}`}
+              className="group relative aspect-[3/4] overflow-hidden"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={tile.img}
+                alt={tile.label}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute inset-0 bg-black/30 flex flex-col items-start justify-end p-4">
+                <h2 className="text-white font-serif-display text-xl mb-1">{tile.label}</h2>
+                <span className="text-white text-xs font-semibold uppercase tracking-wide border-b border-white pb-0.5">
+                  Ver tienda
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
 
         {/* Full category list stays reachable as a compact row below the tiles */}

@@ -53,7 +53,11 @@ DEFAULT_PRODUCT_CONDITION = "Muy bueno"
 CATEGORY_KEYWORDS = {
     "Chaquetas": ["chaqueta", "jacket", "blazer", "abrigo", "coat", "cazadora", "americana"],
     "Vestidos": ["vestido", "dress"],
-    "Camisas": ["camisa", "shirt", "blusa", "blouse", "camiseta", "t-shirt", "tee", "top", "jersey", "sudadera", "hoodie", "sweater"],
+    # Camisetas and Sudaderas MUST come before Camisas: matching is substring-based
+    # and "camiseta" contains "camisa", so Camisas would otherwise swallow tees.
+    "Sudaderas": ["sudadera", "hoodie", "sweatshirt", "sweater", "jersey"],
+    "Camisetas": ["camiseta", "t-shirt", "tshirt", "tee", "top"],
+    "Camisas": ["camisa", "shirt", "blusa", "blouse"],
     "Pantalones": ["pantalon", "pantalón", "trouser", "pant", "jean", "vaquero", "falda", "skirt", "short"],
     "Zapatos": ["zapato", "shoe", "sneaker", "zapatilla", "bota", "boot", "sandalia", "tacon"],
     "Bolsos": ["bolso", "bag", "mochila", "backpack", "cartera", "clutch"],

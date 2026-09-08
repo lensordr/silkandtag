@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, mediaUrl } from "@/lib/api";
 import { Product, productImages } from "@/lib/types";
 
-const CATEGORIES = ["Chaquetas", "Vestidos", "Camisas", "Pantalones", "Zapatos", "Bolsos", "Accesorios"];
+const CATEGORIES = ["Chaquetas", "Vestidos", "Camisas", "Camisetas", "Sudaderas", "Pantalones", "Zapatos", "Bolsos", "Accesorios"];
 const CONDITIONS = ["Como nuevo", "Muy bueno", "Bueno", "Aceptable"];
 const STATUSES = [
   { value: "available", label: "Disponible" },
