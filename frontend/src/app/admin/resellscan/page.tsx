@@ -69,9 +69,14 @@ function PublishPanel({
   const [title, setTitle] = useState(item.suggested_title || "");
   const [description, setDescription] = useState(item.suggested_description || "");
   const [price, setPrice] = useState("");
+  const [orderedUrls, setOrderedUrls] = useState<string[]>(item.image_urls || []);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ code: string } | null>(null);
+
+  function setAsMain(url: string) {
+    setOrderedUrls((prev) => [url, ...prev.filter((u) => u !== url)]);
+  }
 
   async function handlePublish() {
     setError("");
@@ -86,6 +91,7 @@ function PublishPanel({
         price: priceValue,
         title: title || undefined,
         description: description || undefined,
+        image_urls: orderedUrls.length ? orderedUrls : undefined,
       });
       setDone({ code: product.code });
       onPublished();
@@ -109,6 +115,34 @@ function PublishPanel({
       <div className="text-xs uppercase text-brand-gray tracking-wide mb-2">
         Publicar como producto
       </div>
+      {orderedUrls.length > 0 && (
+        <div className="mb-3">
+          <label className="text-sm text-brand-gray block mb-1">
+            Foto principal (pulsa una para elegirla)
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {orderedUrls.map((url, i) => (
+              <button
+                type="button"
+                key={url}
+                onClick={() => setAsMain(url)}
+                className={`relative w-16 h-16 border-2 overflow-hidden ${
+                  i === 0 ? "border-brand-orange" : "border-brand-border"
+                }`}
+                title={i === 0 ? "Foto principal" : "Poner como principal"}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={mediaUrl(url)} alt="" className="w-full h-full object-cover" />
+                {i === 0 && (
+                  <span className="absolute bottom-0 inset-x-0 bg-brand-orange text-white text-[10px] leading-tight text-center">
+                    Principal
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <label className="text-sm text-brand-gray block mb-1">Titulo</label>
       <input
         value={title}

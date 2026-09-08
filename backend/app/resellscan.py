@@ -95,6 +95,11 @@ class PublishIn(BaseModel):
     color: Optional[str] = None
     condition: Optional[str] = None
     original_price: Optional[float] = None
+    # Ordered subset of the scanned item's photos to use for the product, first
+    # = main photo. If omitted, the scanned item's original photo order is kept.
+    # Any URL not belonging to this scanned item is ignored (can't inject
+    # arbitrary URLs). This is how the admin picks the main photo at publish time.
+    image_urls: Optional[List[str]] = None
 
 
 RECOMMENDED_PHOTO_LABELS = [
@@ -376,6 +381,19 @@ def publish_scanned_item(
     condition = data.condition.strip() if data.condition else _map_condition(item.condition)
     original_price = data.original_price if data.original_price is not None else item.estimated_retail_price
 
+    # Photos: default to the scanned item's own order, but honour an explicit
+    # ordering from the admin (first = main). Only URLs that actually belong to
+    # this scanned item are accepted, so the request can't inject external URLs.
+    item_urls = [u for u in (item.image_urls or "").split(",") if u]
+    if data.image_urls:
+        allowed = set(item_urls)
+        chosen = [u for u in data.image_urls if u in allowed]
+        # If the admin somehow sent nothing valid, fall back to the original set
+        # rather than publishing a product with no photos.
+        ordered_urls = chosen or item_urls
+    else:
+        ordered_urls = item_urls
+
     product = models.Product(
         title=title,
         description=description,
@@ -387,7 +405,7 @@ def publish_scanned_item(
         price=data.price,
         original_price=original_price,
         status="available",
-        image_urls=item.image_urls or "",
+        image_urls=",".join(ordered_urls),
     )
     db.add(product)
     db.flush()

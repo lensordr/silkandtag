@@ -296,6 +296,12 @@ def update_product(
     status: Optional[str] = Form(None),
     images: List[UploadFile] = File(default=[]),
     replace_images: bool = Form(False),
+    # Explicit final ordering of the images to KEEP, comma-separated, first =
+    # main photo. Lets the admin reorder, set a new main, or remove individual
+    # photos after publishing. Any newly uploaded `images` are appended after
+    # this list. When omitted, image handling stays backward-compatible
+    # (append new, or replace all when replace_images is set).
+    image_urls: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
@@ -314,7 +320,14 @@ def update_product(
 
     new_urls = [save_upload(img) for img in images if img.filename]
 
-    if new_urls:
+    if image_urls is not None:
+        # Explicit ordering supplied: keep exactly these existing images, in this
+        # order (first = main). Guard against injected/foreign URLs by only
+        # accepting URLs the product already has. New uploads append after.
+        current = set(product.images_list())
+        kept = [u for u in (x.strip() for x in image_urls.split(",")) if u in current]
+        product.image_urls = ",".join(kept + new_urls)
+    elif new_urls:
         if replace_images:
             product.image_urls = ",".join(new_urls)
         else:

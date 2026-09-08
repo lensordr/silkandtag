@@ -32,6 +32,7 @@ export default function AdminProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [files, setFiles] = useState<FileList | null>(null);
+  const [keptImages, setKeptImages] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,6 +49,7 @@ export default function AdminProductsPage() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setFiles(null);
+    setKeptImages([]);
     setError("");
     setShowForm(true);
   }
@@ -67,6 +69,7 @@ export default function AdminProductsPage() {
       status: p.status,
     });
     setFiles(null);
+    setKeptImages(productImages(p));
     setError("");
     setShowForm(true);
   }
@@ -102,6 +105,9 @@ export default function AdminProductsPage() {
       }
 
       if (editing) {
+        // Explicit final order of kept photos (first = main). Sent only when
+        // editing; new uploads (above) are appended after these on the backend.
+        fd.append("image_urls", keptImages.join(","));
         await api.adminUpdateProduct(editing.id, fd);
       } else {
         await api.adminCreateProduct(fd);
@@ -270,16 +276,52 @@ export default function AdminProductsPage() {
 
               <div className="sm:col-span-2">
                 <label className="text-sm text-brand-gray block mb-1">
-                  Fotos {editing ? "(se anadiran a las existentes)" : ""}
+                  Fotos {editing ? "(las nuevas se anaden al final)" : ""}
                 </label>
                 <input type="file" multiple accept="image/*" onChange={(e) => setFiles(e.target.files)} className="w-full text-sm" />
-                {editing && productImages(editing).length > 0 && (
-                  <div className="flex gap-2 mt-2">
-                    {productImages(editing).map((img) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={img} src={mediaUrl(img)} alt="" className="w-14 h-14 object-cover border border-brand-border" />
-                    ))}
-                  </div>
+                {editing && keptImages.length > 0 && (
+                  <>
+                    <p className="text-xs text-brand-gray mt-2">
+                      Pulsa una foto para hacerla principal, o quitala. La primera es la principal.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {keptImages.map((img, i) => (
+                        <div key={img} className="relative">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKeptImages((prev) => [img, ...prev.filter((u) => u !== img)])
+                            }
+                            title={i === 0 ? "Foto principal" : "Poner como principal"}
+                            className={`block w-16 h-16 overflow-hidden border-2 ${
+                              i === 0 ? "border-brand-orange" : "border-brand-border"
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={mediaUrl(img)} alt="" className="w-full h-full object-cover" />
+                            {i === 0 && (
+                              <span className="absolute bottom-0 inset-x-0 bg-brand-orange text-white text-[10px] leading-tight text-center">
+                                Principal
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setKeptImages((prev) => prev.filter((u) => u !== img))}
+                            aria-label="Quitar foto"
+                            className="absolute -top-2 -right-2 bg-black/70 text-white w-5 h-5 flex items-center justify-center text-xs leading-none hover:bg-black"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {editing && keptImages.length === 0 && (
+                  <p className="text-xs text-brand-gray mt-2">
+                    No quedan fotos. Sube al menos una nueva.
+                  </p>
                 )}
               </div>
             </div>
