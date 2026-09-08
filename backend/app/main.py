@@ -154,16 +154,43 @@ if CLOUDINARY_ENABLED:
     )
 
 
+def compress_image_bytes(data: bytes, max_dim: int = 1600, quality: int = 82) -> bytes:
+    """Downscale + re-encode an image to keep uploads and AI payloads small.
+
+    Phone photos are often 8-12 MP and several MB. Neither the storefront nor
+    the vision model needs that: uploading full-res to Cloudinary AND sending it
+    to Gemini inside a single Heroku request was pushing total time past Heroku's
+    30s router limit (H12). Shrinking to <=max_dim on the long edge and re-saving
+    as JPEG typically cuts size 5-10x, keeping the whole scan well under 30s.
+
+    Falls back to the original bytes if anything goes wrong (e.g. an exotic
+    format), so this can never make an upload fail that would otherwise succeed.
+    """
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im = im.convert("RGB")
+            im.thumbnail((max_dim, max_dim))  # preserves aspect ratio, only shrinks
+            out = io.BytesIO()
+            im.save(out, format="JPEG", quality=quality, optimize=True)
+            return out.getvalue()
+    except Exception:
+        return data
+
+
 def save_upload(img: UploadFile, folder: str = "silkandtag/products") -> str:
     data = img.file.read()
-    if len(data) > 8 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="La imagen supera el tamano maximo (8MB)")
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="La imagen supera el tamano maximo (15MB)")
     try:
         with Image.open(io.BytesIO(data)) as im:
             im.verify()  # confirms it's really a decodable image, not just a renamed file
             detected_format = im.format
     except (UnidentifiedImageError, Exception):
         raise HTTPException(status_code=400, detail="El archivo no es una imagen valida")
+
+    # Always downscale before storing: smaller uploads = faster requests and
+    # lighter storefront pages. After this the stored file is JPEG.
+    data = compress_image_bytes(data)
 
     if CLOUDINARY_ENABLED:
         result = cloudinary.uploader.upload(
@@ -174,11 +201,7 @@ def save_upload(img: UploadFile, folder: str = "silkandtag/products") -> str:
         )
         return result["secure_url"]
 
-    ext = ALLOWED_IMAGE_TYPES.get(img.content_type)
-    if not ext:
-        ext = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif"}.get(detected_format or "", ".jpg")
-
-    fname = f"{uuid.uuid4().hex}{ext}"
+    fname = f"{uuid.uuid4().hex}.jpg"
     dest = os.path.join(UPLOAD_DIR, fname)
     with open(dest, "wb") as f:
         f.write(data)

@@ -201,9 +201,9 @@ class GeminiAnalysisService(AIAnalysisService):
         # of budget we return a clear "try again" message -- a real HTTP response,
         # never an H12. Non-transient errors (bad key/request) return immediately.
         TRANSIENT_STATUSES = {429, 500, 503}
-        TOTAL_BUDGET_SECONDS = 26.0  # safely under Heroku's 30s router timeout
+        TOTAL_BUDGET_SECONDS = 18.0  # leave room for image uploads within Heroku's 30s limit
         MAX_ATTEMPTS = 3
-        MIN_ATTEMPT_TIMEOUT = 6.0  # don't start an attempt we can't give a fair chance
+        MIN_ATTEMPT_TIMEOUT = 5.0  # don't start an attempt we can't give a fair chance
 
         deadline = time.monotonic() + TOTAL_BUDGET_SECONDS
         resp = None
@@ -260,7 +260,7 @@ def get_analysis_service() -> AIAnalysisService:
 
 
 # ---------- Routes ----------
-from .main import require_admin, save_upload  # noqa: E402  (avoid circular import at module load time)
+from .main import require_admin, save_upload, compress_image_bytes  # noqa: E402  (avoid circular import at module load time)
 
 
 @router.post("/scan")
@@ -284,7 +284,9 @@ def scan_product(
     for img in images:
         data = img.file.read()
         img.file.seek(0)
-        raw_bytes.append(data)
+        # Send the AI a downscaled copy (same as what we store): far smaller
+        # payload keeps the whole request under Heroku's 30s limit.
+        raw_bytes.append(compress_image_bytes(data))
         urls.append(save_upload(img, folder="silkandtag/resellscan"))
 
     service = get_analysis_service()
