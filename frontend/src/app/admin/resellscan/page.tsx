@@ -285,7 +285,6 @@ export default function ResellScanPage() {
           type="file"
           accept="image/*"
           multiple
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             handleAddFiles(e.target.files);
